@@ -127,6 +127,17 @@ const Vector4 = math.Vector4 =
           v[ 3 ]  = w;
           return v;
       }
+      static create_from_hex(hex, alpha = 1.) {
+          const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+          const v = new Vector4(4);
+          if (result) {
+              v[0] = parseInt(result[1], 16) / 255.;
+              v[1] = parseInt(result[2], 16) / 255.;
+              v[2] = parseInt(result[3], 16) / 255.;
+              v[3] = alpha;
+          }
+          return v;
+      }
       copy () { return Vector4.from (this); }
       // In-fix operations:
       equals (b) {
@@ -211,7 +222,7 @@ const vec4    = math.vec4 = Vector4.create;
 const unsafe3 = math.unsafe3 = Vector3.unsafe;
 const unsafe4 = math.unsafe4 = Vector4.unsafe;
 const color   = math.color = Vector4.create;
-
+const hex_color = math.hex_color = Vector4.create_from_hex;
 
 // Part II: Matrices:   *************************************************************************************
 

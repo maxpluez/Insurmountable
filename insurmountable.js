@@ -1,6 +1,7 @@
 import {tiny, defs} from './examples/common.js';
 import {txts} from './textures.js';
 import {spls} from './spline.js';
+import { Robot } from './robot.js';
 
 // Pull these names into this module's scope for convenience:
 const { vec3, vec4, color, hex_color, Mat4, Shape, Material, Shader, Texture, Component } = tiny;
@@ -52,6 +53,7 @@ const Insurmountable_base = defs.Insurmountable_base =
         this.ball_location = vec3(1, 1, 1);
         this.ball_radius = 0.25;
 
+        // Declaring walls and grips
         this.scene_height = 0;
         this.wall_width = 10;
         this.wall_height = 15;
@@ -61,6 +63,9 @@ const Insurmountable_base = defs.Insurmountable_base =
 
         this.speed_rate = 1.0;
         this.scene_speed_base = 2;
+
+        // Declaring the robot
+        this.robot = new Robot();
       }
 
       render_animation( caller )
@@ -182,6 +187,9 @@ export class Insurmountable extends Insurmountable_base
       this.shapes.ball.draw( caller, this.uniforms, grip_transform, { ...this.materials.plastic, color: blue });
     }
     this.shapes.hermite.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.plastic, color: hex_color("#FFFFFF") }, "LINE_STRIP" );
+
+    // Drawing the robot
+    this.robot.draw( caller, this.uniforms, { ...this.materials.metal, color: hex_color("#C4CACE") });
   }
 
   render_controls()

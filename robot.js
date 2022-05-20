@@ -72,9 +72,9 @@ export const Robot = class Robot {
         this.ll_arm_node.children_arcs.push(this.l_wrist)
     }
 
-    draw(webgl_manager, uniforms, material) {
+    draw(webgl_manager, uniforms, transform_matrix, material) {
         this.matrix_stack = [];
-        this._rec_draw(this.root, Mat4.identity(), webgl_manager, uniforms, material);
+        this._rec_draw(this.root, transform_matrix, webgl_manager, uniforms, material);
     }
 
     _rec_draw(arc, matrix, webgl_manager, uniforms, material) {

@@ -6,7 +6,26 @@ import { Robot } from './robot.js';
 // Pull these names into this module's scope for convenience:
 const { vec3, vec4, color, hex_color, Mat4, Shape, Material, Shader, Texture, Component } = tiny;
 
-// TODO: you should implement the required classes here or in another file.
+function binary_solve_mono(f /* a monotonic function */, t_min, t_max, epsilon) {
+  let f_min = f(t_min);
+  let f_max = f(t_max);
+  if (Math.abs(f_min) < epsilon) {
+    return t_min; // found solution
+  }
+  if (Math.abs(f_max) < epsilon ) {
+    return t_max; // found solution
+  }
+  if (f_min * f_max > 0) {
+    return "Not Found"; // no solution for monotonic function
+  }
+
+  let f_mid = f((t_min + t_max)/2);
+  if (f_mid * f_min < 0) {
+    return binary_solve_mono(f, t_min, (t_min + t_max)/2, epsilon);
+  } else {
+    return binary_solve_mono(f, (t_min + t_max)/2, t_max, epsilon);
+  }
+}
 
 export
 const Insurmountable_base = defs.Insurmountable_base =
@@ -55,11 +74,20 @@ const Insurmountable_base = defs.Insurmountable_base =
 
         // Declaring walls and grips
         this.scene_height = 0;
-        this.wall_width = 10;
+        this.robot_range_width = 10;
+        this.wall_width = 15;
         this.wall_height = 15;
 
         this.grip_dh = 2; // height difference between two consecutive grips
-        this.grips = [[0, this.wall_height + this.grip_dh, 0]];
+        this.grips = [];
+        // initialize grips
+        for (let curr_h = 0; curr_h < this.wall_height; curr_h += this.grip_dh) {
+          let x_prev = (this.grips.length > 0) ? this.grips[this.grips.length-1][0] : 0;
+          let x_left = Math.max(x_prev - 2, -this.robot_range_width/2);
+          let x_right = Math.min(x_prev + 2, this.robot_range_width/2);
+          let x_curr = Math.random() * (x_right - x_left) + x_left;
+          this.grips.push([x_curr, curr_h, 0]);
+        }
 
         this.speed_rate = 1.0;
         this.scene_speed_base = 2;
@@ -146,7 +174,7 @@ export class Insurmountable extends Insurmountable_base
     this.scene_height += dt * this.speed_rate * this.scene_speed_base;
     this.uniforms.scene_height = this.scene_height;
     this.uniforms.wall_height = this.wall_height;
-    this.uniforms.wall_width = this.wall_width;
+    this.uniforms.wall_width = this.robot_range_width;
     let n_grips_after = Math.floor(this.scene_height / this.grip_dh);
 
     // update grips
@@ -161,8 +189,8 @@ export class Insurmountable extends Insurmountable_base
     // generate new grips if necessary
     if (n_grips_after > n_grips_before) {
       let x_prev = (this.grips.length > 0) ? this.grips[this.grips.length-1][0] : 0;
-      let x_left = Math.max(x_prev - 2, -this.wall_width/2);
-      let x_right = Math.min(x_prev + 2, this.wall_width/2);
+      let x_left = Math.max(x_prev - 2, -this.robot_range_width/2);
+      let x_right = Math.min(x_prev + 2, this.robot_range_width/2);
       let x_curr = Math.random() * (x_right - x_left) + x_left;
       this.grips.push([x_curr, this.scene_height - n_grips_after * this.grip_dh + this.wall_height + this.grip_dh, 0]);
     }
@@ -177,7 +205,7 @@ export class Insurmountable extends Insurmountable_base
 
     // TODO: you can change the wall and board as needed.
     let wall_center_transform = Mat4.translation(0, this.wall_height/2, -1.2);
-    let wall_transform = wall_center_transform.times(Mat4.scale(this.wall_width/2, this.wall_height/2, 0.1));
+    let wall_transform = wall_center_transform.times(Mat4.scale(this.robot_range_width/2, this.wall_height/2, 0.1));
     this.shapes.box.draw( caller, this.uniforms, wall_transform, this.materials.wall );
     for (let grip of this.grips) {
       if (grip[1] > this.wall_height || grip[1] < 0) {
@@ -188,8 +216,10 @@ export class Insurmountable extends Insurmountable_base
     }
     this.shapes.hermite.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.plastic, color: hex_color("#FFFFFF") }, "LINE_STRIP" );
 
+    let t_robot = binary_solve_mono((t) => (this.shapes.hermite.curve_func(t)[1] - 5), 0, 1, 0.01);
+    let tranform_robot = Mat4.translation(this.shapes.hermite.curve_func(t_robot)[0], 0, 0);
     // Drawing the robot
-    this.robot.draw( caller, this.uniforms, { ...this.materials.metal, color: hex_color("#C4CACE") });
+    this.robot.draw( caller, this.uniforms, tranform_robot,{ ...this.materials.metal, color: hex_color("#C4CACE") });
   }
 
   render_controls()

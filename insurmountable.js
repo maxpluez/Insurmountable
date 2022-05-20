@@ -2,6 +2,7 @@ import {tiny, defs} from './examples/common.js';
 import {txts} from './textures.js';
 import {spls} from './spline.js';
 import { Robot } from './robot.js';
+import {Skybox} from './skybox.js';
 
 // Pull these names into this module's scope for convenience:
 const { vec3, vec4, color, hex_color, Mat4, Shape, Material, Shader, Texture, Component } = tiny;
@@ -61,6 +62,7 @@ const Insurmountable_base = defs.Insurmountable_base =
           plastic:  { shader: phong, ambient: .2, diffusivity: 1, specularity: .5, color: color( .9,.5,.9,1 ) },
           metal:    { shader: phong, ambient: .2, diffusivity: 1, specularity:  1, color: color( .9,.5,.9,1 ) },
           rgb:      { shader: tex_phong, ambient: .5, texture: new Texture( "assets/rgb.jpg" ) },
+          grass: { shader: tex_phong, ambient: 1, diffusivity: 0, specularity: 0, texture: new Texture( "assets/T_Grass.png" ) },
           wall:     {
             shader: tex_wall,
             color: hex_color("#000000"),
@@ -94,6 +96,8 @@ const Insurmountable_base = defs.Insurmountable_base =
 
         // Declaring the robot
         this.robot = new Robot();
+
+        this.skybox = new Skybox();
       }
 
       render_animation( caller )
@@ -114,7 +118,7 @@ const Insurmountable_base = defs.Insurmountable_base =
           // TODO: you can change the camera as needed.
           Shader.assign_camera( Mat4.look_at (vec3 (0, 8, 25), vec3 (0, 5, 0), vec3 (0, 1, 0)), this.uniforms );
         }
-        this.uniforms.projection_transform = Mat4.perspective( Math.PI/4, caller.width/caller.height, 1, 100 );
+        this.uniforms.projection_transform = Mat4.perspective( Math.PI/4, caller.width/caller.height, 0.01, 500000 );
 
         // *** Lights: *** Values of vector or point lights.  They'll be consulted by
         // the shader when coloring shapes.  See Light's class definition for inputs.
@@ -200,8 +204,8 @@ export class Insurmountable extends Insurmountable_base
     this.shapes.hermite.sync_card( caller.context );
 
     // !!! Draw ground
-    let floor_transform = Mat4.translation(0, 0, 0).times(Mat4.scale(10, 0.01, 10));
-    this.shapes.box.draw( caller, this.uniforms, floor_transform, { ...this.materials.plastic, color: green } );
+    let floor_transform = Mat4.translation(0, 0, 0).times(Mat4.scale(50, 0.01, 50));
+    this.shapes.box.draw( caller, this.uniforms, floor_transform, this.materials.grass);
 
     // TODO: you can change the wall and board as needed.
     let wall_center_transform = Mat4.translation(0, this.wall_height/2, -1.2);
@@ -220,6 +224,7 @@ export class Insurmountable extends Insurmountable_base
     let tranform_robot = Mat4.translation(this.shapes.hermite.curve_func(t_robot)[0], 0, 0);
     // Drawing the robot
     this.robot.draw( caller, this.uniforms, tranform_robot,{ ...this.materials.metal, color: hex_color("#C4CACE") });
+    this.skybox.display(caller, this.uniforms, 1000);
   }
 
   render_controls()

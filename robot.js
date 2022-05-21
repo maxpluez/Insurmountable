@@ -14,7 +14,7 @@ export const Robot = class Robot {
         const torso_transform = Mat4.scale(1.1, 1.1, 1.1);
         this.torso_node = new Node("torso", shapes.sphere, torso_transform);
         // root->torso
-        const root_location = Mat4.translation(0, 5, 2);
+        const root_location = Mat4.translation(0, 5, 0);
         this.root = new Arc("root", null, this.torso_node, root_location);
 
         // right upper arm node
@@ -104,6 +104,7 @@ class Node {
         this.name = name;
         this.shape = shape;
         this.transform_matrix = transform;
+        this.parent_arc = null;
         this.children_arcs = [];
     }
 }
@@ -115,5 +116,21 @@ class Arc {
         this.child_node = child;
         this.location_matrix = location;
         this.articulation_matrix = Mat4.identity();
+        child.parent_arc = this;
+    }
+    get_absolute_location() {
+        let matrix = this.location_matrix.times(this.articulation_matrix);
+        if (this.parent_node == null) {
+            return matrix;
+        } else {
+            return (this.parent_node.parent_arc.get_absolute_location()).times(matrix);
+        }
+    }
+    get_default_location() {
+        if (this.parent_node == null) {
+            return this.location_matrix;
+        } else {
+            return (this.parent_node.parent_arc.get_default_location()).times(this.location_matrix);
+        }
     }
 }

@@ -31,6 +31,9 @@ import {Transforms_Sandbox_Base, Transforms_Sandbox}
 import {Insurmountable}
                     from "./insurmountable.js";
 
+import {IK}
+                    from "./ik_testing.js";
+
 Object.assign (defs,
                {Minimal_Webgl_Demo},
                {Axes_Viewer, Axes_Viewer_Test_Scene, Matrix_Game},
@@ -42,12 +45,13 @@ Object.assign (defs,
                {Scene_To_Texture_Demo},
                {Text_Demo},
                {Transforms_Sandbox_Base, Transforms_Sandbox},
-               {Insurmountable}
+               {Insurmountable}, 
+               {IK}
 );
 
 // ******************** SELECT THE DEMO TO DISPLAY:
 
-const main_scene        = Insurmountable;
+const main_scene        = IK;
 const additional_scenes = [];
 
 export {main_scene, additional_scenes, defs};

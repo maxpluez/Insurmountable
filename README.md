@@ -10,5 +10,3 @@ Either:
 1. Run `python3 server.py`
 or
 2. Run a live server on index.html in VSCode or WebStorm
-
-3. Young is testing again

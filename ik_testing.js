@@ -242,21 +242,21 @@ export class IK extends Insurmountable_base
     //IK Updates
     this.grips[0] = vec3(1+Math.sin(t), 8-Math.cos(t), 0); 
     let target = this.grips[0];
-    let end_effector = (this.robot.r_wrist.get_absolute_location().times(this.robot.r_hand_node.transform_matrix)).times(vec4(0,0,0,1)).to3();
+    let end_effector = this.robot.get_r_hand_pos();
     let anchor = this.robot.r_elbow.get_absolute_location().times(vec4(0,0,0,1)).to3();
     let delta = (end_effector.minus(target)).norm();
     while (delta > 0.0001) {
-      // end_effector = (this.robot.r_wrist.get_absolute_location().times(this.robot.r_hand_node.transform_matrix)).times(vec4(0,0,0,1)).to3()
+      // end_effector = this.robot.get_r_hand_pos();
       // anchor = this.robot.r_wrist.get_absolute_location().times(vec4(0,0,0,1)).to3();
       // this.dof_wrist += calc_angle(end_effector, anchor, target);
       // this.robot.r_wrist.articulation_matrix = Mat4.rotation(this.dof_elbow, 0, 0, 1);
 
-      end_effector = (this.robot.r_wrist.get_absolute_location().times(this.robot.r_hand_node.transform_matrix)).times(vec4(0,0,0,1)).to3()
+      end_effector = this.robot.get_r_hand_pos();
       anchor = this.robot.r_elbow.get_absolute_location().times(vec4(0,0,0,1)).to3();
       this.dof_elbow += calc_angle(end_effector, anchor, target);
       this.robot.r_elbow.articulation_matrix = Mat4.rotation(this.dof_elbow, 0, 0, 1);
 
-      end_effector = (this.robot.r_wrist.get_absolute_location().times(this.robot.r_hand_node.transform_matrix)).times(vec4(0,0,0,1)).to3()
+      end_effector = this.robot.get_r_hand_pos();
       anchor = this.robot.r_shoulder.get_absolute_location().times(vec4(0,0,0,1)).to3();
       this.dof_shoulder += calc_angle(end_effector, anchor, target);
       this.robot.r_shoulder.articulation_matrix = Mat4.rotation(this.dof_shoulder, 0, 0, 1);

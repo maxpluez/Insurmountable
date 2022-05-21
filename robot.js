@@ -72,6 +72,20 @@ export const Robot = class Robot {
         this.ll_arm_node.children_arcs.push(this.l_wrist)
     }
 
+    // rebase_left_as_root() {
+    //     let mat = Mat4.translation(this.get_l_hand_pos);
+    //     this.root = new Arc("root", null, this.l_hand_node, mat);
+    //     mat = Mat4.inverse(this.l_wrist.transform_matrix);
+    // }
+
+    get_r_hand_pos() {
+        return (this.r_wrist.get_absolute_location().times(this.r_hand_node.transform_matrix)).times(vec4(0,0,0,1)).to3();
+    }
+
+    get_l_hand_pos() {
+        return (this.l_wrist.get_absolute_location().times(this.l_hand_node.transform_matrix)).times(vec4(0,0,0,1)).to3();
+    }
+
     draw(webgl_manager, uniforms, transform_matrix, material) {
         this.matrix_stack = [];
         this._rec_draw(this.root, transform_matrix, webgl_manager, uniforms, material);

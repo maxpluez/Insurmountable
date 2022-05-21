@@ -1,9 +1,32 @@
 import {tiny, defs} from './examples/common.js';
+import {txts} from './textures.js';
+import {spls} from './spline.js';
+import { Robot } from './robot.js';
+import {Skybox} from './skybox.js';
 
 // Pull these names into this module's scope for convenience:
-const { vec3, vec4, color, Mat4, Shape, Material, Shader, Texture, Component } = tiny;
+const { vec3, vec4, color, hex_color, Mat4, Shape, Material, Shader, Texture, Component } = tiny;
 
-// TODO: you should implement the required classes here or in another file.
+function binary_solve_mono(f /* a monotonic function */, t_min, t_max, epsilon) {
+  let f_min = f(t_min);
+  let f_max = f(t_max);
+  if (Math.abs(f_min) < epsilon) {
+    return t_min; // found solution
+  }
+  if (Math.abs(f_max) < epsilon ) {
+    return t_max; // found solution
+  }
+  if (f_min * f_max > 0) {
+    return "Not Found"; // no solution for monotonic function
+  }
+
+  let f_mid = f((t_min + t_max)/2);
+  if (f_mid * f_min < 0) {
+    return binary_solve_mono(f, t_min, (t_min + t_max)/2, epsilon);
+  } else {
+    return binary_solve_mono(f, (t_min + t_max)/2, t_max, epsilon);
+  }
+}
 
 export
 const Insurmountable_base = defs.Insurmountable_base =
@@ -15,6 +38,7 @@ const Insurmountable_base = defs.Insurmountable_base =
 
         // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
         this.hover = this.swarm = false;
+        this.debug = false;
         // At the beginning of our program, load one of each of these shape
         // definitions onto the GPU.  NOTE:  Only do this ONCE per shape it
         // would be redundant to tell it again.  You should just re-use the
@@ -22,7 +46,9 @@ const Insurmountable_base = defs.Insurmountable_base =
         // Don't define more than one blueprint for the same thing here.
         this.shapes = { 'box'  : new defs.Cube(),
           'ball' : new defs.Subdivision_Sphere( 4 ),
-          'axis' : new defs.Axis_Arrows() };
+          'axis' : new defs.Axis_Arrows() ,
+          'hermite' : new spls.Hermite_Spline(100)
+        };
 
         // *** Materials: ***  A "material" used on individual shapes specifies all fields
         // that a Shader queries to light/color it properly.  Here we use a Phong shader.
@@ -31,15 +57,47 @@ const Insurmountable_base = defs.Insurmountable_base =
         const basic = new defs.Basic_Shader();
         const phong = new defs.Phong_Shader();
         const tex_phong = new defs.Textured_Phong();
-        this.materials = {};
-        this.materials.plastic = { shader: phong, ambient: .2, diffusivity: 1, specularity: .5, color: color( .9,.5,.9,1 ) }
-        this.materials.metal   = { shader: phong, ambient: .2, diffusivity: 1, specularity:  1, color: color( .9,.5,.9,1 ) }
-        this.materials.rgb = { shader: tex_phong, ambient: .5, texture: new Texture( "assets/rgb.jpg" ) }
+        const tex_wall = new txts.Texture_Wall();
+        this.materials = {
+          plastic:  { shader: phong, ambient: .2, diffusivity: 1, specularity: .5, color: color( .9,.5,.9,1 ) },
+          metal:    { shader: phong, ambient: .2, diffusivity: 1, specularity:  1, color: color( .9,.5,.9,1 ) },
+          rgb:      { shader: tex_phong, ambient: .5, texture: new Texture( "assets/rgb.jpg" ) },
+          grass: { shader: tex_phong, ambient: 1, diffusivity: 0, specularity: 0, texture: new Texture( "assets/T_Grass.png" ) },
+          wall:     {
+            shader: tex_wall,
+            color: hex_color("#000000"),
+            ambient: .6, diffusivity: 0.3, specularity: 0.1,
+            texture: new Texture("assets/rock.jpg", "NEAREST")
+          }
+        }
 
         this.ball_location = vec3(1, 1, 1);
         this.ball_radius = 0.25;
 
-        // TODO: you should create a Spline class instance
+        // Declaring walls and grips
+        this.scene_height = 0;
+        this.robot_range_width = 10;
+        this.wall_width = 15;
+        this.wall_height = 15;
+
+        this.grip_dh = 2; // height difference between two consecutive grips
+        this.grips = [];
+        // initialize grips
+        for (let curr_h = 0; curr_h < this.wall_height; curr_h += this.grip_dh) {
+          let x_prev = (this.grips.length > 0) ? this.grips[this.grips.length-1][0] : 0;
+          let x_left = Math.max(x_prev - 2, -this.robot_range_width/2);
+          let x_right = Math.min(x_prev + 2, this.robot_range_width/2);
+          let x_curr = Math.random() * (x_right - x_left) + x_left;
+          this.grips.push([x_curr, curr_h, 0]);
+        }
+
+        this.speed_rate = 1.0;
+        this.scene_speed_base = 2;
+
+        // Declaring the robot
+        this.robot = new Robot();
+
+        this.skybox = new Skybox();
       }
 
       render_animation( caller )
@@ -58,9 +116,9 @@ const Insurmountable_base = defs.Insurmountable_base =
 
           // !!! Camera changed here
           // TODO: you can change the camera as needed.
-          Shader.assign_camera( Mat4.look_at (vec3 (5, 8, 15), vec3 (0, 5, 0), vec3 (0, 1, 0)), this.uniforms );
+          Shader.assign_camera( Mat4.look_at (vec3 (0, 8, 25), vec3 (0, 5, 0), vec3 (0, 1, 0)), this.uniforms );
         }
-        this.uniforms.projection_transform = Mat4.perspective( Math.PI/4, caller.width/caller.height, 1, 100 );
+        this.uniforms.projection_transform = Mat4.perspective( Math.PI/4, caller.width/caller.height, 0.01, 500000 );
 
         // *** Lights: *** Values of vector or point lights.  They'll be consulted by
         // the shader when coloring shapes.  See Light's class definition for inputs.
@@ -68,7 +126,7 @@ const Insurmountable_base = defs.Insurmountable_base =
 
         // const light_position = Mat4.rotation( angle,   1,0,0 ).times( vec4( 0,-1,1,0 ) ); !!!
         // !!! Light changed here
-        const light_position = vec4(20, 20, 20, 1.0);
+        const light_position = vec4(0, 20, 10, 1.0);
         this.uniforms.lights = [ defs.Phong_Shader.light_source( light_position, color( 1,1,1,1 ), 1000000 ) ];
       }
     }
@@ -113,15 +171,60 @@ export class Insurmountable extends Insurmountable_base
           blackboard_color = color( 0.2, 0.2, 0.2, 1 );
 
     const t = this.t = this.uniforms.animation_time/1000;
+    const dt = this.dt = this.uniforms.animation_delta_time/1000;
+
+    // update texture
+    let n_grips_before = Math.floor(this.scene_height / this.grip_dh);
+    this.scene_height += dt * this.speed_rate * this.scene_speed_base;
+    this.uniforms.scene_height = this.scene_height;
+    this.uniforms.wall_height = this.wall_height;
+    this.uniforms.wall_width = this.robot_range_width;
+    let n_grips_after = Math.floor(this.scene_height / this.grip_dh);
+
+    // update grips
+    for (let i = 0; i < this.grips.length; i++) {
+      this.grips[i][1] -= dt * this.speed_rate * this.scene_speed_base;
+      if (this.grips[i][1] < -2 * this.grip_dh) { // out of wall
+        this.grips.splice(i, 1);
+        i--;
+      }
+    }
+
+    // generate new grips if necessary
+    if (n_grips_after > n_grips_before) {
+      let x_prev = (this.grips.length > 0) ? this.grips[this.grips.length-1][0] : 0;
+      let x_left = Math.max(x_prev - 2, -this.robot_range_width/2);
+      let x_right = Math.min(x_prev + 2, this.robot_range_width/2);
+      let x_curr = Math.random() * (x_right - x_left) + x_left;
+      this.grips.push([x_curr, this.scene_height - n_grips_after * this.grip_dh + this.wall_height + this.grip_dh, 0]);
+    }
+
+    // update Hermite Spline
+    this.shapes.hermite.set_ctrl_points(this.grips);
+    this.shapes.hermite.sync_card( caller.context );
 
     // !!! Draw ground
-    let floor_transform = Mat4.translation(0, 0, 0).times(Mat4.scale(10, 0.01, 10));
-    this.shapes.box.draw( caller, this.uniforms, floor_transform, { ...this.materials.plastic, color: green } );
+    let floor_transform = Mat4.translation(0, 0, 0).times(Mat4.scale(50, 0.01, 50));
+    this.shapes.box.draw( caller, this.uniforms, floor_transform, this.materials.grass);
 
-    // TODO: you should draw scene here.
     // TODO: you can change the wall and board as needed.
-    let wall_transform = Mat4.translation(0, 5, -1.2).times(Mat4.scale(6, 5, 0.1));
-    this.shapes.box.draw( caller, this.uniforms, wall_transform, { ...this.materials.plastic, color: wall_color } );
+    let wall_center_transform = Mat4.translation(0, this.wall_height/2, -1.2);
+    let wall_transform = wall_center_transform.times(Mat4.scale(this.robot_range_width/2, this.wall_height/2, 0.1));
+    this.shapes.box.draw( caller, this.uniforms, wall_transform, this.materials.wall );
+    for (let grip of this.grips) {
+      if (grip[1] > this.wall_height || grip[1] < 0) {
+        continue;
+      }
+      let grip_transform = Mat4.translation(grip[0], grip[1],grip[2]).times(Mat4.scale(0.3, 0.3, 0.3));
+      this.shapes.ball.draw( caller, this.uniforms, grip_transform, { ...this.materials.plastic, color: blue });
+    }
+    this.shapes.hermite.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.plastic, color: hex_color("#FFFFFF") }, "LINE_STRIP" );
+
+    let t_robot = binary_solve_mono((t) => (this.shapes.hermite.curve_func(t)[1] - 5), 0, 1, 0.01);
+    let tranform_robot = Mat4.translation(this.shapes.hermite.curve_func(t_robot)[0], 0, 0);
+    // Drawing the robot
+    this.robot.draw( caller, this.uniforms, tranform_robot,{ ...this.materials.metal, color: hex_color("#C4CACE") });
+    this.skybox.display(caller, this.uniforms, 1000);
   }
 
   render_controls()
@@ -131,7 +234,8 @@ export class Insurmountable extends Insurmountable_base
     this.control_panel.innerHTML += "Assignment 2: IK Engine";
     this.new_line();    
     // TODO: You can add your button events for debugging. (optional)
-    this.key_triggered_button( "Debug", [ "Shift", "D" ], null );
+    this.key_triggered_button( "Debug", [ "Shift", "D" ], () => { this.debug = !this.debug; } );
+    this.key_triggered_button( "Pause", [ "=" ], () => { this.speed_rate = (this.speed_rate === 0) ? 1 : 0; } );
     this.new_line();
   }
 }

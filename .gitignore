@@ -1,8 +1,4 @@
-*.gif
-*.ico
-*.png
-*.jpg
-*.obj
 *.bat
 *.command
-.vscode/*
+.vscode
+.idea

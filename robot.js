@@ -10,19 +10,46 @@ const shapes = {
 
 export const Robot = class Robot {
     constructor() {
+        // left hand node
+        let l_hand_transform = Mat4.scale(.3, .3, .3);
+        this.l_hand_node = new Node("l_hand", shapes.sphere, l_hand_transform);
+        //root->l_hand
+        const root_location = Mat4.translation(-2.6, 6.4, 0);
+        this.root = new Arc("root", null, this.l_hand_node, root_location); 
+
+        // left lower arm node
+        let ll_arm_transform = Mat4.scale(0.2, 0.6, .2);
+        ll_arm_transform.pre_multiply(Mat4.translation(0, -0.6, 0));
+        this.ll_arm_node = new Node("ll_arm", shapes.box, ll_arm_transform);
+        // l_hand->l_wrist->ll_arm
+        const l_wrist_location = Mat4.translation(0, -0.3, 0);
+        this.l_wrist = new Arc("l_wrist", this.l_hand_node, this.ll_arm_node, l_wrist_location);
+        this.l_hand_node.children_arcs.push(this.l_wrist)
+
+        // left upper arm node
+        let lu_arm_transform = Mat4.scale(0.8, 0.2, .2);
+        lu_arm_transform.pre_multiply(Mat4.translation(0.8, 0, 0));
+        this.lu_arm_node = new Node("lu_arm", shapes.box, lu_arm_transform);
+        // ll_arm->l_elbow->lu_arm
+        const l_elbow_location = Mat4.translation(0, -1.1, 0);
+        this.l_elbow = new Arc("l_elbow", this.ll_arm_node, this.lu_arm_node, l_elbow_location);
+        this.ll_arm_node.children_arcs.push(this.l_elbow)
+
         // torso
         const torso_transform = Mat4.scale(1.1, 1.1, 1.1);
+        torso_transform.pre_multiply(Mat4.translation(1, 0, 0));
         this.torso_node = new Node("torso", shapes.sphere, torso_transform);
-        // root->torso
-        const root_location = Mat4.translation(0, 5, 0);
-        this.root = new Arc("root", null, this.torso_node, root_location);
+        // lu_arm->l_shoulder->torso
+        const l_shoulder_location = Mat4.translation(1.6, 0, 0);
+        this.l_shoulder = new Arc("l_shoulder", this.lu_arm_node, this.torso_node, l_shoulder_location);
+        this.lu_arm_node.children_arcs.push(this.l_shoulder)
 
         // right upper arm node
         let ru_arm_transform = Mat4.scale(0.8, 0.2, .2);
         ru_arm_transform.pre_multiply(Mat4.translation(0.8, 0, 0));
         this.ru_arm_node = new Node("ru_arm", shapes.box, ru_arm_transform);
         // torso->r_shoulder->ru_arm
-        const r_shoulder_location = Mat4.translation(1.0, 0, 0);
+        const r_shoulder_location = Mat4.translation(2.0, 0, 0);
         this.r_shoulder = new Arc("r_shoulder", this.torso_node, this.ru_arm_node, r_shoulder_location);
         this.torso_node.children_arcs.push(this.r_shoulder)
 
@@ -43,33 +70,6 @@ export const Robot = class Robot {
         const r_wrist_location = Mat4.translation(0, 1.1, 0);
         this.r_wrist = new Arc("r_wrist", this.rl_arm_node, this.r_hand_node, r_wrist_location);
         this.rl_arm_node.children_arcs.push(this.r_wrist)
-
-        // left upper arm node
-        let lu_arm_transform = Mat4.scale(0.8, 0.2, .2);
-        lu_arm_transform.pre_multiply(Mat4.translation(-0.8, 0, 0));
-        this.lu_arm_node = new Node("lu_arm", shapes.box, lu_arm_transform);
-        // torso->r_shoulder->ru_arm
-        const l_shoulder_location = Mat4.translation(-1.0, 0, 0);
-        this.l_shoulder = new Arc("l_shoulder", this.torso_node, this.lu_arm_node, l_shoulder_location);
-        this.torso_node.children_arcs.push(this.l_shoulder)
-
-        // left lower arm node
-        let ll_arm_transform = Mat4.scale(0.2, 0.6, .2);
-        ll_arm_transform.pre_multiply(Mat4.translation(0, 0.6, 0));
-        this.ll_arm_node = new Node("ll_arm", shapes.box, ll_arm_transform);
-        // ru_arm->r_elbow->rl_arm
-        const l_elbow_location = Mat4.translation(-1.6, 0, 0);
-        this.l_elbow = new Arc("l_elbow", this.lu_arm_node, this.ll_arm_node, l_elbow_location);
-        this.lu_arm_node.children_arcs.push(this.l_elbow)
-
-        // left hand node
-        let l_hand_transform = Mat4.scale(.3, .3, .3);
-        l_hand_transform.pre_multiply(Mat4.translation(0, 0.3, 0));
-        this.l_hand_node = new Node("l_hand", shapes.sphere, l_hand_transform);
-        // rl_arm->r_wrist->r_hand
-        const l_wrist_location = Mat4.translation(0, 1.1, 0);
-        this.l_wrist = new Arc("l_wrist", this.ll_arm_node, this.l_hand_node, l_wrist_location);
-        this.ll_arm_node.children_arcs.push(this.l_wrist)
     }
 
     // rebase_left_as_root() {

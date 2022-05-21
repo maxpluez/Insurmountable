@@ -89,7 +89,7 @@ const Insurmountable_base = defs.Insurmountable_base =
         this.wall_height = 15;
 
         this.grip_dh = 2; // height difference between two consecutive grips
-        this.grips = [vec3(1, 7, 0)]; // testing
+        this.grips = [vec3(1, 8, 0)]; // testing
 
         // initialize grips
         // for (let curr_h = 0; curr_h < this.wall_height; curr_h += this.grip_dh) {
@@ -110,6 +110,8 @@ const Insurmountable_base = defs.Insurmountable_base =
 
         //IK related
         this.grab = false;
+        // this.robot.r_elbow.articulation_matrix = Mat4.rotation(Math.PI/6, 0, 0, 1);
+        this.dof_wrist = 0;
         this.dof_elbow = 0;
         this.dof_shoulder = 0;
       }
@@ -238,27 +240,36 @@ export class IK extends Insurmountable_base
     // let tranform_robot = Mat4.translation(this.shapes.hermite.curve_func(t_robot)[0], 0, 0);
 
     //IK Updates
-    this.grips[0] = vec3(1+Math.sin(t), 7-Math.cos(t), 0); 
+    this.grips[0] = vec3(1+Math.sin(t), 8-Math.cos(t), 0); 
     let target = this.grips[0];
-    let end_effector = this.robot.r_wrist.get_absolute_location().times(vec4(0,0,0,1)).to3();
+    let end_effector = (this.robot.r_wrist.get_absolute_location().times(this.robot.r_hand_node.transform_matrix)).times(vec4(0,0,0,1)).to3();
     let anchor = this.robot.r_elbow.get_absolute_location().times(vec4(0,0,0,1)).to3();
-    let delta = (end_effector.minus(anchor)).norm();
-    // while(delta > 0.001) {
-      delta = (end_effector.minus(anchor)).norm();
-      end_effector = this.robot.r_wrist.get_absolute_location().times(vec4(0,0,0,1)).to3();
+    let delta = (end_effector.minus(target)).norm();
+    while (delta > 0.0001) {
+      // end_effector = (this.robot.r_wrist.get_absolute_location().times(this.robot.r_hand_node.transform_matrix)).times(vec4(0,0,0,1)).to3()
+      // anchor = this.robot.r_wrist.get_absolute_location().times(vec4(0,0,0,1)).to3();
+      // this.dof_wrist += calc_angle(end_effector, anchor, target);
+      // this.robot.r_wrist.articulation_matrix = Mat4.rotation(this.dof_elbow, 0, 0, 1);
+
+      end_effector = (this.robot.r_wrist.get_absolute_location().times(this.robot.r_hand_node.transform_matrix)).times(vec4(0,0,0,1)).to3()
       anchor = this.robot.r_elbow.get_absolute_location().times(vec4(0,0,0,1)).to3();
       this.dof_elbow += calc_angle(end_effector, anchor, target);
       this.robot.r_elbow.articulation_matrix = Mat4.rotation(this.dof_elbow, 0, 0, 1);
-      end_effector = this.robot.r_wrist.get_absolute_location().times(vec4(0,0,0,1)).to3();
+
+      end_effector = (this.robot.r_wrist.get_absolute_location().times(this.robot.r_hand_node.transform_matrix)).times(vec4(0,0,0,1)).to3()
       anchor = this.robot.r_shoulder.get_absolute_location().times(vec4(0,0,0,1)).to3();
       this.dof_shoulder += calc_angle(end_effector, anchor, target);
       this.robot.r_shoulder.articulation_matrix = Mat4.rotation(this.dof_shoulder, 0, 0, 1);
-    // }
-    // if (this.debug) {
-    //   console.log(end_effector);
-    //   console.log(target);
-    //   this.debug = !this.debug;
-    // }
+
+      if (Math.abs((end_effector.minus(target)).norm()-delta) < 0.0001) break;
+      delta = (end_effector.minus(target)).norm();
+    }
+
+    if (this.debug) {
+      console.log(end_effector);
+      console.log((this.robot.r_wrist.get_absolute_location().times(this.robot.r_hand_node.transform_matrix)).times(vec4(0,0,0,1)).to3());
+      this.debug = !this.debug;
+    }
 
     // Drawing the robot
     this.robot.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.metal, color: hex_color("#C4CACE") });

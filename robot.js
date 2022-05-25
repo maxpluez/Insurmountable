@@ -128,6 +128,7 @@ class Arc {
         this.articulation_matrix = Mat4.identity();
         child.parent_arc = this;
     }
+
     get_absolute_location() {
         let matrix = this.location_matrix.times(this.articulation_matrix);
         if (this.parent_node == null) {
@@ -136,6 +137,7 @@ class Arc {
             return (this.parent_node.parent_arc.get_absolute_location()).times(matrix);
         }
     }
+
     get_default_location() {
         if (this.parent_node == null) {
             return this.location_matrix;
@@ -143,6 +145,7 @@ class Arc {
             return (this.parent_node.parent_arc.get_default_location()).times(this.location_matrix);
         }
     }
+    
     get_loc_vec() {
         return this.get_absolute_location().times(vec4(0,0,0,1)).to3();
     }

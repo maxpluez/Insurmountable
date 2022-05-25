@@ -51,7 +51,7 @@ Object.assign (defs,
 
 // ******************** SELECT THE DEMO TO DISPLAY:
 
-const main_scene        = IK;
+const main_scene        = Insurmountable;
 const additional_scenes = [];
 
 export {main_scene, additional_scenes, defs};

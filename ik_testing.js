@@ -31,7 +31,14 @@ function binary_solve_mono(f /* a monotonic function */, t_min, t_max, epsilon) 
 function calc_angle(p1 /* from */, p2 /* vertex */, p3 /* to */, n = vec3(0, 0, 1)) {
   let dot = (p1.minus(p2)).dot(p3.minus(p2));
   let mag = (p1.minus(p2)).norm()*(p3.minus(p2)).norm();
-  let angle = Math.acos(dot/mag);
+  let angle = 0;
+  if (dot/mag >= 1) {
+    angle = 0; // cap
+  } else if (dot/mag <= -1) {
+    angle = Math.PI; // cap
+  } else {
+    angle = Math.acos(dot/mag);
+  }
   let det = ((p1.minus(p2)).cross(p3.minus(p2))).dot(n);
   return (det > 0) ? angle : -angle;
 }
@@ -245,9 +252,11 @@ export class IK extends Insurmountable_base
     //IK Updates
     this.grips[0] = vec3(1+2*Math.sin(t), 10-2*Math.cos(t), 0); 
     let target = this.grips[0];
+    this.shapes.ball.draw( caller, this.uniforms, Mat4.translation(...target).times(Mat4.scale(0.3, 0.3, 0.3)), { ...this.materials.plastic, color: green });
     let end_effector = this.robot.get_r_hand_pos();
     let anchor = this.robot.r_elbow.get_absolute_location().times(vec4(0,0,0,1)).to3();
     let delta = (end_effector.minus(target)).norm();
+    
     while (delta > 0.0001) {
       end_effector = this.robot.get_r_hand_pos();
       anchor = this.robot.r_wrist.get_absolute_location().times(vec4(0,0,0,1)).to3();
@@ -282,7 +291,6 @@ export class IK extends Insurmountable_base
       if (Math.abs((end_effector.minus(target)).norm()-delta) < 0.0001) break;
       delta = (end_effector.minus(target)).norm();
     }
-    // this.robot.l_elbow.articulation_matrix = Mat4.rotation(t, 0, 0, 1);
 
     // if (this.debug) {
     //   console.log(end_effector);

@@ -72,11 +72,7 @@ export const Robot = class Robot {
         this.rl_arm_node.children_arcs.push(this.r_wrist)
     }
 
-    // rebase_left_as_root() {
-    //     let mat = Mat4.translation(this.get_l_hand_pos);
-    //     this.root = new Arc("root", null, this.l_hand_node, mat);
-    //     mat = Mat4.inverse(this.l_wrist.transform_matrix);
-    // }
+    // rebase_left_as_root() {} // TODO: switch hands
 
     get_r_hand_pos() {
         return (this.r_wrist.get_absolute_location().times(this.r_hand_node.transform_matrix)).times(vec4(0,0,0,1)).to3();
@@ -146,5 +142,8 @@ class Arc {
         } else {
             return (this.parent_node.parent_arc.get_default_location()).times(this.location_matrix);
         }
+    }
+    get_loc_vec() {
+        return this.get_absolute_location().times(vec4(0,0,0,1)).to3();
     }
 }

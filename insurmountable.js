@@ -106,7 +106,7 @@ const Insurmountable_base = defs.Insurmountable_base =
           this.grips.push([x_curr, curr_h, 0]);
         }
 
-        this.speed_rate = 5.0;
+        this.speed_rate = 2.0; // TODO: for IK demo only
         this.scene_speed_base = 2;
 
         // Declaring the robot
@@ -117,12 +117,12 @@ const Insurmountable_base = defs.Insurmountable_base =
 
         //IK
         this.dof_root = 0;
-        this.dof_r_wrist = 0;
+        this.dof_r_wrist = 0; // disabled
         this.dof_r_elbow = 0;
         this.dof_r_shoulder = 0;
         this.dof_l_shoulder = 0;
         this.dof_l_elbow = 0;
-        this.dof_l_wrist = 0;
+        this.dof_l_wrist = 0; // disabled
       }
 
       render_animation( caller )

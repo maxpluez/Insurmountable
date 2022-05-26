@@ -22,7 +22,7 @@ export const Robot = class Robot {
         ll_arm_transform.pre_multiply(Mat4.translation(0, -0.6, 0));
         this.ll_arm_node = new Node("ll_arm", shapes.box, ll_arm_transform);
         // l_hand->l_wrist->ll_arm
-        const l_wrist_location = Mat4.translation(0, -0.2, 0);
+        const l_wrist_location = Mat4.translation(0, -0.3, 0);
         this.l_wrist = new Arc("l_wrist", this.l_hand_node, this.ll_arm_node, l_wrist_location);
         this.l_hand_node.children_arcs.push(this.l_wrist)
 
@@ -40,7 +40,7 @@ export const Robot = class Robot {
         torso_transform.pre_multiply(Mat4.translation(1, 0, 0));
         this.torso_node = new Node("torso", shapes.sphere, torso_transform);
         // lu_arm->l_shoulder->torso
-        const l_shoulder_location = Mat4.translation(1.5, 0, 0);
+        const l_shoulder_location = Mat4.translation(1.6, 0, 0);
         this.l_shoulder = new Arc("l_shoulder", this.lu_arm_node, this.torso_node, l_shoulder_location);
         this.lu_arm_node.children_arcs.push(this.l_shoulder)
 
@@ -58,7 +58,7 @@ export const Robot = class Robot {
         rl_arm_transform.pre_multiply(Mat4.translation(0, 0.6, 0));
         this.rl_arm_node = new Node("rl_arm", shapes.box, rl_arm_transform);
         // ru_arm->r_elbow->rl_arm
-        const r_elbow_location = Mat4.translation(1.5, 0, 0);
+        const r_elbow_location = Mat4.translation(1.6, 0, 0);
         this.r_elbow = new Arc("r_elbow", this.ru_arm_node, this.rl_arm_node, r_elbow_location);
         this.ru_arm_node.children_arcs.push(this.r_elbow)
 

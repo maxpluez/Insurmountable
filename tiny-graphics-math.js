@@ -318,6 +318,12 @@ const Mat4 = math.Mat4 =
                             [0, 0, z, 0],
                             [0, 0, 0, 1]);
       }
+      static scale_uniform (scale) {
+          return Matrix.of([scale, 0, 0, 0],
+              [0, scale, 0, 0],
+              [0, 0, scale, 0],
+              [0, 0, 0, 1]);
+      }
       static translation (x, y, z) {
           return Matrix.of ([1, 0, 0, x],
                             [0, 1, 0, y],

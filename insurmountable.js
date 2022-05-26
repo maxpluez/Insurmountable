@@ -2,11 +2,46 @@ import {tiny, defs} from './examples/common.js';
 import {txts} from './textures.js';
 import {spls} from './spline.js';
 import { Robot } from './robot.js';
+import {Skybox} from './skybox.js';
 
 // Pull these names into this module's scope for convenience:
 const { vec3, vec4, color, hex_color, Mat4, Shape, Material, Shader, Texture, Component } = tiny;
 
-// TODO: you should implement the required classes here or in another file.
+function binary_solve_mono(f /* a monotonic function */, t_min, t_max, epsilon) {
+  let f_min = f(t_min);
+  let f_max = f(t_max);
+  if (Math.abs(f_min) < epsilon) {
+    return t_min; // found solution
+  }
+  if (Math.abs(f_max) < epsilon ) {
+    return t_max; // found solution
+  }
+  if (f_min * f_max > 0) {
+    return "Not Found"; // no solution for monotonic function
+  }
+
+  let f_mid = f((t_min + t_max)/2);
+  if (f_mid * f_min < 0) {
+    return binary_solve_mono(f, t_min, (t_min + t_max)/2, epsilon);
+  } else {
+    return binary_solve_mono(f, (t_min + t_max)/2, t_max, epsilon);
+  }
+}
+
+function calc_angle(p1 /* from */, p2 /* vertex */, p3 /* to */, n = vec3(0, 0, 1)) {
+  let dot = (p1.minus(p2)).dot(p3.minus(p2));
+  let mag = (p1.minus(p2)).norm()*(p3.minus(p2)).norm();
+  let angle = 0;
+  if (dot/mag >= 1) {
+    angle = 0;
+  } else if (dot/mag <= -1) {
+    angle = Math.PI;
+  } else {
+    angle = Math.acos(dot/mag);
+  }
+  let det = ((p1.minus(p2)).cross(p3.minus(p2))).dot(n);
+  return (det > 0) ? angle : -angle;
+}
 
 export
 const Insurmountable_base = defs.Insurmountable_base =
@@ -42,6 +77,7 @@ const Insurmountable_base = defs.Insurmountable_base =
           plastic:  { shader: phong, ambient: .2, diffusivity: 1, specularity: .5, color: color( .9,.5,.9,1 ) },
           metal:    { shader: phong, ambient: .2, diffusivity: 1, specularity:  1, color: color( .9,.5,.9,1 ) },
           rgb:      { shader: tex_phong, ambient: .5, texture: new Texture( "assets/rgb.jpg" ) },
+          grass: { shader: tex_phong, ambient: 1, diffusivity: 0, specularity: 0, texture: new Texture( "assets/T_Grass.png" ) },
           wall:     {
             shader: tex_wall,
             color: hex_color("#000000"),
@@ -55,17 +91,41 @@ const Insurmountable_base = defs.Insurmountable_base =
 
         // Declaring walls and grips
         this.scene_height = 0;
-        this.wall_width = 10;
+        this.robot_range_width = 10;
+        this.wall_width = 15;
         this.wall_height = 15;
 
         this.grip_dh = 2; // height difference between two consecutive grips
-        this.grips = [[0, this.wall_height + this.grip_dh, 0]];
+        this.grips = [];
+        // initialize grips
+        for (let curr_h = 0; curr_h < this.wall_height; curr_h += this.grip_dh) {
+          let x_prev = (this.grips.length > 0) ? this.grips[this.grips.length-1][0] : 0;
+          let x_left = Math.max(x_prev - 2, -this.robot_range_width/2);
+          let x_right = Math.min(x_prev + 2, this.robot_range_width/2);
+          let x_curr = Math.random() * (x_right - x_left) + x_left;
+          this.grips.push([x_curr, curr_h, 0]);
+        }
 
-        this.speed_rate = 1.0;
+        this.speed_rate = 2.0; // TODO: for IK demo only
         this.scene_speed_base = 2;
 
         // Declaring the robot
         this.robot = new Robot();
+        this.robot.root.location_matrix = Mat4.translation(0,10,0); // Temp offset
+
+        this.skybox = new Skybox();
+
+        //IK
+        this.dof_root = 0;
+        this.dof_r_wrist = 0; // disabled
+        this.dof_r_elbow = 0;
+        this.dof_r_shoulder = 0;
+        this.dof_l_shoulder = 0;
+        this.dof_l_elbow = 0;
+        this.dof_l_wrist = 0; // disabled
+
+        // hand target
+        this.target = vec3(5, 10, 0)
       }
 
       render_animation( caller )
@@ -86,7 +146,7 @@ const Insurmountable_base = defs.Insurmountable_base =
           // TODO: you can change the camera as needed.
           Shader.assign_camera( Mat4.look_at (vec3 (0, 8, 25), vec3 (0, 5, 0), vec3 (0, 1, 0)), this.uniforms );
         }
-        this.uniforms.projection_transform = Mat4.perspective( Math.PI/4, caller.width/caller.height, 1, 100 );
+        this.uniforms.projection_transform = Mat4.perspective( Math.PI/4, caller.width/caller.height, 0.01, 500000 );
 
         // *** Lights: *** Values of vector or point lights.  They'll be consulted by
         // the shader when coloring shapes.  See Light's class definition for inputs.
@@ -146,7 +206,7 @@ export class Insurmountable extends Insurmountable_base
     this.scene_height += dt * this.speed_rate * this.scene_speed_base;
     this.uniforms.scene_height = this.scene_height;
     this.uniforms.wall_height = this.wall_height;
-    this.uniforms.wall_width = this.wall_width;
+    this.uniforms.wall_width = this.robot_range_width;
     let n_grips_after = Math.floor(this.scene_height / this.grip_dh);
 
     // update grips
@@ -161,9 +221,9 @@ export class Insurmountable extends Insurmountable_base
     // generate new grips if necessary
     if (n_grips_after > n_grips_before) {
       let x_prev = (this.grips.length > 0) ? this.grips[this.grips.length-1][0] : 0;
-      let x_left = Math.max(x_prev - 2, -this.wall_width/2);
-      let x_right = Math.min(x_prev + 2, this.wall_width/2);
-      let x_curr = Math.random() * (x_right - x_left) + x_left;
+      let x_left = Math.max(x_prev - 2, -this.robot_range_width/2);
+      let x_right = Math.min(x_prev + 2, this.robot_range_width/2);
+      let x_curr = (1-Math.random()/2) * (x_right - x_left) + x_left;
       this.grips.push([x_curr, this.scene_height - n_grips_after * this.grip_dh + this.wall_height + this.grip_dh, 0]);
     }
 
@@ -172,12 +232,12 @@ export class Insurmountable extends Insurmountable_base
     this.shapes.hermite.sync_card( caller.context );
 
     // !!! Draw ground
-    let floor_transform = Mat4.translation(0, 0, 0).times(Mat4.scale(10, 0.01, 10));
-    this.shapes.box.draw( caller, this.uniforms, floor_transform, { ...this.materials.plastic, color: green } );
+    let floor_transform = Mat4.translation(0, 0, 0).times(Mat4.scale(50, 0.01, 50));
+    this.shapes.box.draw( caller, this.uniforms, floor_transform, this.materials.grass);
 
     // TODO: you can change the wall and board as needed.
     let wall_center_transform = Mat4.translation(0, this.wall_height/2, -1.2);
-    let wall_transform = wall_center_transform.times(Mat4.scale(this.wall_width/2, this.wall_height/2, 0.1));
+    let wall_transform = wall_center_transform.times(Mat4.scale(this.robot_range_width/2, this.wall_height/2, 0.1));
     this.shapes.box.draw( caller, this.uniforms, wall_transform, this.materials.wall );
     for (let grip of this.grips) {
       if (grip[1] > this.wall_height || grip[1] < 0) {
@@ -188,8 +248,62 @@ export class Insurmountable extends Insurmountable_base
     }
     this.shapes.hermite.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.plastic, color: hex_color("#FFFFFF") }, "LINE_STRIP" );
 
+    let t_robot = binary_solve_mono((t) => (this.shapes.hermite.curve_func(t)[1] - 5), 0, 1, 0.01);
+    // let transform_robot = Mat4.translation(this.shapes.hermite.curve_func(t_robot)[0], 0, 0);
+    // this.robot.root.articulation_matrix = transform_robot;
+
+    let target = this.target;
+    // this.shapes.ball.draw( caller, this.uniforms, Mat4.translation(...target).times(Mat4.scale(0.3, 0.3, 0.3)), { ...this.materials.plastic, color: green });
+    let end_effector = this.robot.get_r_hand_pos();
+    let anchor = this.robot.r_elbow.get_absolute_location().times(vec4(0,0,0,1)).to3();
+    let delta = (end_effector.minus(target)).norm();
+    while (delta > 0.0001) {
+      // end_effector = this.robot.get_r_hand_pos();
+      // anchor = this.robot.r_wrist.get_absolute_location().times(vec4(0,0,0,1)).to3();
+      // this.dof_r_wrist += calc_angle(end_effector, anchor, target);
+      // this.robot.r_wrist.articulation_matrix = Mat4.rotation(this.dof_r_wrist, 0, 0, 1);
+
+      end_effector = this.robot.get_r_hand_pos();
+      anchor = this.robot.r_elbow.get_absolute_location().times(vec4(0,0,0,1)).to3();
+      this.dof_r_elbow += calc_angle(end_effector, anchor, target);
+      this.robot.r_elbow.articulation_matrix = Mat4.rotation(this.dof_r_elbow, 0, 0, 1);
+
+      end_effector = this.robot.get_r_hand_pos();
+      anchor = this.robot.r_shoulder.get_absolute_location().times(vec4(0,0,0,1)).to3();
+      this.dof_r_shoulder += calc_angle(end_effector, anchor, target);
+      this.robot.r_shoulder.articulation_matrix = Mat4.rotation(this.dof_r_shoulder, 0, 0, 1);
+
+      end_effector = this.robot.get_r_hand_pos();
+      anchor = this.robot.l_shoulder.get_absolute_location().times(vec4(0,0,0,1)).to3();
+      this.dof_l_shoulder += calc_angle(end_effector, anchor, target);
+      this.robot.l_shoulder.articulation_matrix = Mat4.rotation(this.dof_l_shoulder, 0, 0, 1);
+
+      end_effector = this.robot.get_r_hand_pos();
+      anchor = this.robot.l_elbow.get_absolute_location().times(vec4(0,0,0,1)).to3();
+      this.dof_l_elbow += calc_angle(end_effector, anchor, target);
+      this.robot.l_elbow.articulation_matrix = Mat4.rotation(this.dof_l_elbow, 0, 0, 1);
+
+      // end_effector = this.robot.get_r_hand_pos();
+      // anchor = this.robot.l_wrist.get_absolute_location().times(vec4(0,0,0,1)).to3();
+      // this.dof_l_wrist += calc_angle(end_effector, anchor, target);
+      // this.robot.l_wrist.articulation_matrix = Mat4.rotation(this.dof_l_wrist, 0, 0, 1);
+
+      end_effector = this.robot.get_r_hand_pos();
+      anchor = this.robot.root.get_absolute_location().times(vec4(0,0,0,1)).to3();
+      this.dof_root += calc_angle(end_effector, anchor, target);
+      this.robot.root.articulation_matrix = Mat4.rotation(this.dof_root, 0, 0, 1);
+
+      if (Math.abs((end_effector.minus(target)).norm()-delta) < 0.0001) break;
+      delta = (end_effector.minus(target)).norm();
+    }
+
     // Drawing the robot
-    this.robot.draw( caller, this.uniforms, { ...this.materials.metal, color: hex_color("#C4CACE") });
+    this.robot.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.metal, color: hex_color("#C4CACE") });
+    this.skybox.display(caller, this.uniforms, 1000);
+
+    // Drawing target for debugging purposes
+    const target_transform = Mat4.translation(this.target[0], this.target[1], 1).times(Mat4.scale(0.1, 0.1, 0.1));
+    this.shapes.box.draw( caller, this.uniforms, target_transform, { ...this.materials.metal, color: hex_color("#FF0000") });
   }
 
   render_controls()
@@ -201,6 +315,13 @@ export class Insurmountable extends Insurmountable_base
     // TODO: You can add your button events for debugging. (optional)
     this.key_triggered_button( "Debug", [ "Shift", "D" ], () => { this.debug = !this.debug; } );
     this.key_triggered_button( "Pause", [ "=" ], () => { this.speed_rate = (this.speed_rate === 0) ? 1 : 0; } );
+
+    // WASD
+    this.new_line();
+    this.key_triggered_button( "Up", [ "w" ], () => { this.target[1] += 0.1 } );
+    this.key_triggered_button( "Left", [ "a" ], () => { this.target[0] -= 0.1 } );
+    this.key_triggered_button( "Down", [ "s" ], () => { this.target[1] -= 0.1 } );
+    this.key_triggered_button( "Right", [ "d" ], () => { this.target[0] += 0.1 } );
     this.new_line();
   }
 }

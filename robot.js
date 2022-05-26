@@ -49,7 +49,7 @@ export const Robot = class Robot {
         ru_arm_transform.pre_multiply(Mat4.translation(0.8, 0, 0));
         this.ru_arm_node = new Node("ru_arm", shapes.box, ru_arm_transform);
         // torso->r_shoulder->ru_arm
-        const r_shoulder_location = Mat4.translation(2.2, 0, 0);
+        const r_shoulder_location = Mat4.translation(2.0, 0, 0);
         this.r_shoulder = new Arc("r_shoulder", this.torso_node, this.ru_arm_node, r_shoulder_location);
         this.torso_node.children_arcs.push(this.r_shoulder)
 

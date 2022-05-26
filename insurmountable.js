@@ -123,6 +123,9 @@ const Insurmountable_base = defs.Insurmountable_base =
         this.dof_l_shoulder = 0;
         this.dof_l_elbow = 0;
         this.dof_l_wrist = 0; // disabled
+
+        // hand target
+        this.target = vec3(5, 10, 0)
       }
 
       render_animation( caller )
@@ -249,7 +252,7 @@ export class Insurmountable extends Insurmountable_base
     // let transform_robot = Mat4.translation(this.shapes.hermite.curve_func(t_robot)[0], 0, 0);
     // this.robot.root.articulation_matrix = transform_robot;
 
-    let target = this.shapes.hermite.curve_func(t_robot);
+    let target = this.target;
     // this.shapes.ball.draw( caller, this.uniforms, Mat4.translation(...target).times(Mat4.scale(0.3, 0.3, 0.3)), { ...this.materials.plastic, color: green });
     let end_effector = this.robot.get_r_hand_pos();
     let anchor = this.robot.r_elbow.get_absolute_location().times(vec4(0,0,0,1)).to3();
@@ -297,6 +300,10 @@ export class Insurmountable extends Insurmountable_base
     // Drawing the robot
     this.robot.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.metal, color: hex_color("#C4CACE") });
     this.skybox.display(caller, this.uniforms, 1000);
+
+    // Drawing target for debugging purposes
+    const target_transform = Mat4.translation(this.target[0], this.target[1], 1).times(Mat4.scale(0.1, 0.1, 0.1));
+    this.shapes.box.draw( caller, this.uniforms, target_transform, { ...this.materials.metal, color: hex_color("#FF0000") });
   }
 
   render_controls()
@@ -308,6 +315,13 @@ export class Insurmountable extends Insurmountable_base
     // TODO: You can add your button events for debugging. (optional)
     this.key_triggered_button( "Debug", [ "Shift", "D" ], () => { this.debug = !this.debug; } );
     this.key_triggered_button( "Pause", [ "=" ], () => { this.speed_rate = (this.speed_rate === 0) ? 1 : 0; } );
+
+    // WASD
+    this.new_line();
+    this.key_triggered_button( "Up", [ "w" ], () => { this.target[1] += 0.1 } );
+    this.key_triggered_button( "Left", [ "a" ], () => { this.target[0] -= 0.1 } );
+    this.key_triggered_button( "Down", [ "s" ], () => { this.target[1] -= 0.1 } );
+    this.key_triggered_button( "Right", [ "d" ], () => { this.target[0] += 0.1 } );
     this.new_line();
   }
 }

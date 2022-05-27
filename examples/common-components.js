@@ -61,7 +61,7 @@ const Movement_Controls = defs.Movement_Controls =
       render_explanation (document_builder, document_element = document_builder.document_region) { }
       render_controls () {
           this.control_panel.innerHTML += "Click and drag the scene to <br> spin your viewpoint around it.<br>";
-          this.key_triggered_button ("Up", [" "], () => this.thrust[ 1 ] = -1, undefined, () => this.thrust[ 1 ] = 0);
+          this.key_triggered_button ("Up", ["x"], () => this.thrust[ 1 ] = -1, undefined, () => this.thrust[ 1 ] = 0);
           this.key_triggered_button ("Forward", ["Ctrl", "w"], () => this.thrust[ 2 ] = 1, undefined,
                                      () => this.thrust[ 2 ] = 0);
           this.new_line ();

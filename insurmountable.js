@@ -115,15 +115,6 @@ const Insurmountable_base = defs.Insurmountable_base =
 
         this.skybox = new Skybox();
 
-        //IK
-        this.dof_root = 0;
-        this.dof_r_wrist = 0; // disabled
-        this.dof_r_elbow = 0;
-        this.dof_r_shoulder = 0;
-        this.dof_l_shoulder = 0;
-        this.dof_l_elbow = 0;
-        this.dof_l_wrist = 0; // disabled
-
         // hand target
         this.target = vec3(5, 10, 0)
       }
@@ -252,49 +243,8 @@ export class Insurmountable extends Insurmountable_base
     // let transform_robot = Mat4.translation(this.shapes.hermite.curve_func(t_robot)[0], 0, 0);
     // this.robot.root.articulation_matrix = transform_robot;
 
-    let target = this.target;
-    // this.shapes.ball.draw( caller, this.uniforms, Mat4.translation(...target).times(Mat4.scale(0.3, 0.3, 0.3)), { ...this.materials.plastic, color: green });
-    let end_effector = this.robot.get_r_hand_pos();
-    let anchor = this.robot.r_elbow.get_absolute_location().times(vec4(0,0,0,1)).to3();
-    let delta = (end_effector.minus(target)).norm();
-    while (delta > 0.0001) {
-      // end_effector = this.robot.get_r_hand_pos();
-      // anchor = this.robot.r_wrist.get_absolute_location().times(vec4(0,0,0,1)).to3();
-      // this.dof_r_wrist += calc_angle(end_effector, anchor, target);
-      // this.robot.r_wrist.articulation_matrix = Mat4.rotation(this.dof_r_wrist, 0, 0, 1);
-
-      end_effector = this.robot.get_r_hand_pos();
-      anchor = this.robot.r_elbow.get_absolute_location().times(vec4(0,0,0,1)).to3();
-      this.dof_r_elbow += calc_angle(end_effector, anchor, target);
-      this.robot.r_elbow.articulation_matrix = Mat4.rotation(this.dof_r_elbow, 0, 0, 1);
-
-      end_effector = this.robot.get_r_hand_pos();
-      anchor = this.robot.r_shoulder.get_absolute_location().times(vec4(0,0,0,1)).to3();
-      this.dof_r_shoulder += calc_angle(end_effector, anchor, target);
-      this.robot.r_shoulder.articulation_matrix = Mat4.rotation(this.dof_r_shoulder, 0, 0, 1);
-
-      end_effector = this.robot.get_r_hand_pos();
-      anchor = this.robot.l_shoulder.get_absolute_location().times(vec4(0,0,0,1)).to3();
-      this.dof_l_shoulder += calc_angle(end_effector, anchor, target);
-      this.robot.l_shoulder.articulation_matrix = Mat4.rotation(this.dof_l_shoulder, 0, 0, 1);
-
-      end_effector = this.robot.get_r_hand_pos();
-      anchor = this.robot.l_elbow.get_absolute_location().times(vec4(0,0,0,1)).to3();
-      this.dof_l_elbow += calc_angle(end_effector, anchor, target);
-      this.robot.l_elbow.articulation_matrix = Mat4.rotation(this.dof_l_elbow, 0, 0, 1);
-
-      // end_effector = this.robot.get_r_hand_pos();
-      // anchor = this.robot.l_wrist.get_absolute_location().times(vec4(0,0,0,1)).to3();
-      // this.dof_l_wrist += calc_angle(end_effector, anchor, target);
-      // this.robot.l_wrist.articulation_matrix = Mat4.rotation(this.dof_l_wrist, 0, 0, 1);
-
-      end_effector = this.robot.get_r_hand_pos();
-      anchor = this.robot.root.get_absolute_location().times(vec4(0,0,0,1)).to3();
-      this.dof_root += calc_angle(end_effector, anchor, target);
-      this.robot.root.articulation_matrix = Mat4.rotation(this.dof_root, 0, 0, 1);
-
-      if (Math.abs((end_effector.minus(target)).norm()-delta) < 0.0001) break;
-      delta = (end_effector.minus(target)).norm();
+    if (!this.robot.reversed) {
+      this.robot.move(this.target);
     }
 
     // Drawing the robot
@@ -323,5 +273,6 @@ export class Insurmountable extends Insurmountable_base
     this.key_triggered_button( "Down", [ "s" ], () => { this.target[1] -= 0.1 } );
     this.key_triggered_button( "Right", [ "d" ], () => { this.target[0] += 0.1 } );
     this.new_line();
+    this.key_triggered_button( "Grab!", [ " " ], () => { this.robot.reverse() } );
   }
 }

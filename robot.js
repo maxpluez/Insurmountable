@@ -150,27 +150,36 @@ export const Robot = class Robot {
         }
     }
 
-    // TODO: FINISH THIS!!!
     reverse() {
         if (!this.reversed) {
-            // angles???
-            
-            this.tail.location_matrix = Mat4.translation(...this.get_end_effector());
-            this.tail.articulation_matrix = this.r_elbow.articulation_matrix;
+            this.tail.allow_rotation = true;
             this.tail.allow_translation = true;
+            
+            // finding tail rotation
+            const tail_location = this.get_end_effector();
+            const tail_to_elbow_dir = this.r_elbow.get_loc_vec().minus(tail_location).normalized();
+            this.tail.dof = Math.sign(tail_to_elbow_dir[0]) * Math.acos(tail_to_elbow_dir.dot(vec3(0, -1, 0)));
+            this.tail.location_matrix = Mat4.translation(...tail_location);
+            this.tail.articulation_matrix = Mat4.rotation(this.tail.dof, 0, 0, 1);
+
+            // Disabling dofs of root to prevent them being updated
+            this.root.allow_rotation = false;
+            this.root.allow_translation = false;
 
             // negate all arc angles
-            /*
-            let curr_arc = this.r_wrist;
+            let curr_arc = this.r_elbow;
             while (true) {
-                curr_arc.articulation_matrix = curr_arc.articulation_matrix.transposed();
+                if (curr_arc.allow_rotation) {
+                    curr_arc.articulation_matrix = curr_arc.articulation_matrix.transposed();
+                    curr_arc.dof *= -1;
+                }
                 if (!curr_arc.parent_node || !curr_arc.parent_node.parent_arc) {
                     break;
                 }
                 curr_arc = curr_arc.parent_node.parent_arc;
             }
-            */
 
+            // Reversed skeleton
             this.r_hand_node.transform_matrix = Mat4.scale(0.3, 0.3, 0.3);
 
             this.r_wrist.location_matrix = Mat4.translation(0, -0.3, 0);
@@ -178,17 +187,14 @@ export const Robot = class Robot {
             this.rl_arm_node.transform_matrix = Mat4.translation(0, -0.6, 0).times(Mat4.scale(0.2, 0.6, 0.2));
 
             this.r_elbow.location_matrix = Mat4.translation(0, -1.1, 0);
-            this.r_elbow.articulation_matrix = Mat4.inverse(this.r_elbow.articulation_matrix);
 
             this.ru_arm_node.transform_matrix = Mat4.translation(-0.8, 0, 0).times(Mat4.scale(0.8, 0.2, 0.2));
 
             this.r_shoulder.location_matrix = Mat4.translation(-1.6, 0, 0);
-            this.r_shoulder.articulation_matrix = this.r_shoulder.articulation_matrix.transposed();
 
             this.torso_node.transform_matrix = Mat4.translation(-1, 0, 0).times(Mat4.scale(1.1, 1.1, 1.1));
 
             this.l_shoulder.location_matrix = Mat4.translation(-2.0, 0, 0);
-            this.l_shoulder.articulation_matrix = this.l_shoulder.articulation_matrix.transposed();
 
             this.lu_arm_node.transform_matrix = Mat4.translation(-0.8, 0, 0).times(Mat4.scale(0.8, 0.2, .2));
 
@@ -202,38 +208,65 @@ export const Robot = class Robot {
 
             this.root.location_matrix = Mat4.identity();
             this.root.articulation_matrix = Mat4.identity();
-            this.root.allow_translation = false;
+            this.root.dof = 0;
 
             this.reversed = true;
         } else {
-            // angles???
-            /*
-            this.root.location_matrix = Mat4.translation(...this.get_end_effector());
-            this.root.articulation_matrix = Mat4.identity();
+            this.root.allow_rotation = true;
             this.root.allow_translation = true;
+
+            const root_location = this.get_end_effector();
+            const root_to_elbow_dir = this.l_elbow.get_loc_vec(this.reversed).minus(root_location).normalized();
+            this.root.dof = Math.sign(root_to_elbow_dir[0]) * Math.acos(root_to_elbow_dir.dot(vec3(0, -1, 0)));
+            this.root.location_matrix = Mat4.translation(...root_location);
+            this.root.articulation_matrix = Mat4.rotation(this.root.dof, 0, 0, 1);
+
+            this.tail.allow_rotation = false;
+            this.tail.allow_translation = false;
+
+            let curr_arc = this.l_elbow;
+            while(true) {
+                if (curr_arc.allow_rotation) {
+                    curr_arc.articulation_matrix = curr_arc.articulation_matrix.transposed();
+                    curr_arc.dof *= -1;
+                }
+                if (!curr_arc.child_node || !curr_arc.child_node.child_arc) {
+                    break;
+                }
+                curr_arc = curr_arc.child_node.child_arc;
+            }
 
             this.l_hand_node.transform_matrix = Mat4.scale(0.3, 0.3, 0.3);
 
-            let curr_child_arc = this.l_hand_node.child_arc;
-            let curr_child_node = curr_child_arc.child_node;
+            this.l_wrist.location_matrix = Mat4.translation(0, -0.3, 0);
 
-            while (curr_child_node && curr_child_arc) {
-                curr_child_arc.location_matrix[0][3] *= -1;
-                curr_child_arc.articulation_matrix = curr_child_arc.articulation_matrix.transposed();
-                curr_child_arc = curr_child_node.child_arc;
+            this.ll_arm_node.transform_matrix = Mat4.translation(0, -0.6, 0).times(Mat4.scale(0.2, 0.6, .2));
 
-                curr_child_node.transform_matrix[0][3] *= -1;
-                curr_child_node = curr_child_arc.child_node;
-            }
+            this.l_elbow.location_matrix = Mat4.translation(0, -1.1, 0);
+
+            this.lu_arm_node.transform_matrix = Mat4.translation(0.8, 0, 0).times(Mat4.scale(0.8, 0.2, .2));
+
+            this.l_shoulder.location_matrix = Mat4.translation(1.6, 0, 0);
+
+            this.torso_node.transform_matrix = Mat4.translation(1, 0, 0).times(Mat4.scale(1.1, 1.1, 1.1));
+
+            this.r_shoulder.location_matrix = Mat4.translation(2.0, 0, 0);
+
+            this.ru_arm_node.transform_matrix = Mat4.translation(0.8, 0, 0).times(Mat4.scale(0.8, 0.2, .2));
+
+            this.r_elbow.location_matrix = Mat4.translation(1.6, 0, 0);
+
+            this.rl_arm_node.transform_matrix = Mat4.translation(0, 0.6, 0).times(Mat4.scale(0.2, 0.6, .2));
+
+            this.r_wrist.location_matrix = Mat4.translation(0, 1.1, 0);
 
             this.r_hand_node.transform_matrix = Mat4.translation(0, 0.3, 0).times(Mat4.scale(.3, .3, .3));
 
             this.tail.location_matrix = Mat4.identity();
             this.tail.articulation_matrix = Mat4.identity();
-            this.tail.allow_translation = false;
+            this.tail.dof = 0;
 
             this.reversed = false;
-            */
         }
     }
 
@@ -243,7 +276,9 @@ export const Robot = class Robot {
         let anchor;
         let delta = (end_effector.minus(target)).norm();
 
-        while (delta > 0.0001) {
+        let count = 0;
+
+        while (delta > 0.0001 && count < 1000) {
             if (anchor_joint.allow_rotation) {
                 anchor = anchor_joint.get_loc_vec(this.reversed);
                 anchor_joint.dof += calc_angle(end_effector, anchor, target);
@@ -258,6 +293,8 @@ export const Robot = class Robot {
 
             end_effector = this.get_end_effector();
             delta = (end_effector.minus(target)).norm();
+
+            count += 1;
         }
     }
 }
@@ -289,6 +326,10 @@ class Arc {
     }
 
     get_absolute_location(reversed) {
+        if (reversed === null) {
+            throw "Please indicate the reversed direction flag";
+        }
+
         let matrix = this.location_matrix.times(this.articulation_matrix);
         if (!reversed) {
             if (!this.parent_node) {

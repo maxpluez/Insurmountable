@@ -243,9 +243,7 @@ export class Insurmountable extends Insurmountable_base
     // let transform_robot = Mat4.translation(this.shapes.hermite.curve_func(t_robot)[0], 0, 0);
     // this.robot.root.articulation_matrix = transform_robot;
 
-    if (!this.robot.reversed) {
-      this.robot.move(this.target);
-    }
+    this.robot.move(this.target);
 
     // Drawing the robot
     this.robot.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.metal, color: hex_color("#C4CACE") });
@@ -273,6 +271,9 @@ export class Insurmountable extends Insurmountable_base
     this.key_triggered_button( "Down", [ "s" ], () => { this.target[1] -= 0.1 } );
     this.key_triggered_button( "Right", [ "d" ], () => { this.target[0] += 0.1 } );
     this.new_line();
-    this.key_triggered_button( "Grab!", [ " " ], () => { this.robot.reverse() } );
+    this.key_triggered_button( "Grab!", [ " " ], () => {
+      this.robot.reverse();
+      this.target = this.robot.get_end_effector();
+    });
   }
 }

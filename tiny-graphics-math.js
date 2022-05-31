@@ -401,3 +401,54 @@ const Mat4 = math.Mat4 =
 
       }
   };
+
+
+
+
+const Mat3 = math.Mat3 =
+    class Mat3 extends Matrix {
+        static identity () { return Matrix.of ([1, 0, 0], [0, 1, 0], [0, 0, 1]); };
+        static rotation (angle, x, y, z) {
+            const normalize = (x, y, z) => {
+                const n = Math.sqrt (x * x + y * y + z * z);
+                return [x / n, y / n, z / n];
+            };
+            let [i, j, k]   = normalize (x, y, z),
+                [c, s]      = [Math.cos (angle), Math.sin (angle)],
+                omc         = 1.0 - c;
+            return Matrix.of ([i * i * omc + c, i * j * omc - k * s, i * k * omc + j * s],
+                              [i * j * omc + k * s, j * j * omc + c, j * k * omc - i * s],
+                              [i * k * omc - j * s, j * k * omc + i * s, k * k * omc + c]);
+        }
+
+        static skew_symmetric(w) {
+            let wx = w[0];
+            let wy = w[1];
+            let wz = w[2];
+            return Matrix.of (
+                [0,-wz, wy],
+                [wz, 0, -wx],
+                [-wy,wx,0]);
+        }
+
+        static project_to_rot(R) {
+            let v1 = vec3(R[0][0], R[1][0], R[2][0]).normalized();
+            let v2 = vec3(R[0][1], R[1][1], R[2][1]).normalized();
+            let v3 = vec3(R[0][2], R[1][2], R[2][2]).normalized();
+            v3 = v1.cross(v2);
+            v2 = v3.cross(v1);
+
+            return Matrix.of(
+                [v1[0], v2[0], v3[0]],
+                [v1[1], v2[1], v3[1]],
+                [v1[2], v2[2], v3[2]]);
+        }
+
+        static rot_to_mat4(R) {
+            return Matrix.of (
+                [R[0][0],R[0][1],R[0][2],0],
+                [R[1][0],R[1][1],R[1][2],0],
+                [R[2][0],R[2][1],R[2][2],0],
+                [0,0,0,1]);
+        }
+    };

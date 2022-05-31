@@ -3,9 +3,10 @@ import {txts} from './textures.js';
 import {spls} from './spline.js';
 import { Robot } from './robot.js';
 import {Skybox} from './skybox.js';
+import {Rigidbody} from "./rigidbody.js";
 
 // Pull these names into this module's scope for convenience:
-const { vec3, vec4, color, hex_color, Mat4, Shape, Material, Shader, Texture, Component } = tiny;
+const { vec3, vec4, color, hex_color, Mat4, Mat3, Shape, Material, Shader, Texture, Component } = tiny;
 
 function binary_solve_mono(f /* a monotonic function */, t_min, t_max, epsilon) {
   let f_min = f(t_min);
@@ -114,6 +115,12 @@ const Insurmountable_base = defs.Insurmountable_base =
         this.robot.root.location_matrix = Mat4.translation(0,10,0); // Temp offset
 
         this.skybox = new Skybox();
+        this.rigidbody = new Rigidbody();
+        let scale = [1, 2, 1.5];
+        this.rigidbody.set_property(new defs.Cube(), 1, Rigidbody.cube_inertia(1, scale), scale, -3.981);
+        this.rigidbody.set_initial_condition(vec3(0,13,0), Mat3.identity(), vec3(1,3,1),vec3(1,1,1));
+        this.rigidbody.set_on_hit_ground_callback(()=>this.rigidbody.p[1]*=-1);
+
 
         // hand target
         this.target = vec3(5, 10, 0)
@@ -248,6 +255,9 @@ export class Insurmountable extends Insurmountable_base
     // Drawing the robot
     this.robot.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.metal, color: hex_color("#C4CACE") });
     this.skybox.display(caller, this.uniforms, 1000);
+
+    this.rigidbody.update(dt);
+    this.rigidbody.draw(caller, this.uniforms, this.materials.plastic);
 
     // Drawing target for debugging purposes
     const target_transform = Mat4.translation(this.target[0], this.target[1], 1).times(Mat4.scale(0.1, 0.1, 0.1));

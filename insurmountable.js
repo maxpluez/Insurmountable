@@ -39,7 +39,7 @@ function find_closest(point_list, target) {
       closest_point = point;
     }
   }
-  return closest_point;
+  return { point: closest_point, distance: min_dir };
 }
 
 export
@@ -121,7 +121,8 @@ const Insurmountable_base = defs.Insurmountable_base =
 
 
         // hand target
-        this.target = vec3(5, 10, 0)
+        this.target = vec3(5, 10, 0);
+        this.grabbed_grip = null;
       }
 
       render_animation( caller )
@@ -248,7 +249,10 @@ export class Insurmountable extends Insurmountable_base
     // let transform_robot = Mat4.translation(this.shapes.hermite.curve_func(t_robot)[0], 0, 0);
     // this.robot.root.articulation_matrix = transform_robot;
 
-    this.robot.move(this.target);
+    if (this.grabbed_grip) {
+      this.robot.move_root(this.grabbed_grip);
+    }
+    this.robot.move_ik(this.target);
 
     // Drawing the robot
     this.robot.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.metal, color: hex_color("#C4CACE") });
@@ -261,7 +265,27 @@ export class Insurmountable extends Insurmountable_base
     const target_transform = Mat4.translation(this.target[0], this.target[1], 1).times(Mat4.scale(0.1, 0.1, 0.1));
     this.shapes.box.draw( caller, this.uniforms, target_transform, { ...this.materials.metal, color: hex_color("#FF0000") });
 
-    this.shapes.box.draw( caller, this.uniforms, Mat4.translation(...find_closest(this.grips, this.target)).times(Mat4.scale(0.5, 0.5, 0.5)), {...this.materials.plastic, color: hex_color("#FFFFFF")});
+    this.shapes.box.draw( caller, this.uniforms, Mat4.translation(...find_closest(this.grips, this.robot.get_end_effector()).point).times(Mat4.scale(0.3, 0.3, 0.3)), {...this.materials.plastic, color: hex_color("#FFFFFF")});
+  }
+
+  try_to_grab() {
+    const { point, distance } = find_closest(this.grips, this.robot.get_end_effector());
+
+    if (distance > 0.3) {
+      return;
+    }
+
+    // First, set the grabbed grip to the current point
+    this.grabbed_grip = point;
+
+    // Then, move the end effector to the grip
+    this.robot.move_ik(vec3(...point));
+
+    // Next, reverse
+    this.robot.reverse();
+
+    // Lastly, change target to the other hand
+    this.target = this.robot.get_end_effector();
   }
 
   render_controls()
@@ -281,9 +305,6 @@ export class Insurmountable extends Insurmountable_base
     this.key_triggered_button( "Down", [ "s" ], () => { this.target[1] -= 0.1 } );
     this.key_triggered_button( "Right", [ "d" ], () => { this.target[0] += 0.1 } );
     this.new_line();
-    this.key_triggered_button( "Grab!", [ " " ], () => {
-      this.robot.reverse();
-      this.target = this.robot.get_end_effector();
-    });
+    this.key_triggered_button( "Grab!", [ " " ], this.try_to_grab);
   }
 }

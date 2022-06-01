@@ -29,21 +29,6 @@ function binary_solve_mono(f /* a monotonic function */, t_min, t_max, epsilon) 
   }
 }
 
-function calc_angle(p1 /* from */, p2 /* vertex */, p3 /* to */, n = vec3(0, 0, 1)) {
-  let dot = (p1.minus(p2)).dot(p3.minus(p2));
-  let mag = (p1.minus(p2)).norm()*(p3.minus(p2)).norm();
-  let angle = 0;
-  if (dot/mag >= 1) {
-    angle = 0;
-  } else if (dot/mag <= -1) {
-    angle = Math.PI;
-  } else {
-    angle = Math.acos(dot/mag);
-  }
-  let det = ((p1.minus(p2)).cross(p3.minus(p2))).dot(n);
-  return (det > 0) ? angle : -angle;
-}
-
 function find_closest(point_list, target) {
   let min_dir = -1;
   let closest_point = null;

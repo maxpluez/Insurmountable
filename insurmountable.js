@@ -44,6 +44,19 @@ function calc_angle(p1 /* from */, p2 /* vertex */, p3 /* to */, n = vec3(0, 0, 
   return (det > 0) ? angle : -angle;
 }
 
+function find_closest(point_list, target) {
+  let min_dir = -1;
+  let closest_point = null;
+  for (let point of point_list) {
+    let dir = vec3(...point).minus(vec3(...target)).norm();
+    if (min_dir < 0 || dir < min_dir) {
+      min_dir = dir;
+      closest_point = point;
+    }
+  }
+  return closest_point;
+}
+
 export
 const Insurmountable_base = defs.Insurmountable_base =
     class Insurmountable_base extends Component
@@ -262,6 +275,8 @@ export class Insurmountable extends Insurmountable_base
     // Drawing target for debugging purposes
     const target_transform = Mat4.translation(this.target[0], this.target[1], 1).times(Mat4.scale(0.1, 0.1, 0.1));
     this.shapes.box.draw( caller, this.uniforms, target_transform, { ...this.materials.metal, color: hex_color("#FF0000") });
+
+    this.shapes.box.draw( caller, this.uniforms, Mat4.translation(...find_closest(this.grips, this.target)).times(Mat4.scale(0.5, 0.5, 0.5)), {...this.materials.plastic, color: hex_color("#FFFFFF")});
   }
 
   render_controls()

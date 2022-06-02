@@ -111,7 +111,7 @@ const Insurmountable_base = defs.Insurmountable_base =
 
         // hand target
         this.target = vec3(5, 10, 0);
-        this.grabbed_grip = null;
+        this.grabbed_grip_pos = null;
       }
 
       render_animation( caller )
@@ -228,8 +228,8 @@ export class Insurmountable extends Insurmountable_base
     // let transform_robot = Mat4.translation(this.shapes.hermite.curr_pos(t_robot)[0], 0, 0);
     // this.robot.root.articulation_matrix = transform_robot;
 
-    if (this.grabbed_grip) {
-      this.robot.move_root(this.grabbed_grip);
+    if (this.grabbed_grip_pos) {
+      this.robot.move_root(this.grabbed_grip_pos);
     }
     this.robot.move_ik(this.target);
 
@@ -245,21 +245,21 @@ export class Insurmountable extends Insurmountable_base
     this.shapes.box.draw( caller, this.uniforms, target_transform, { ...this.materials.metal, color: hex_color("#FF0000") });
 
     // hightlight the closest grip
-    this.shapes.box.draw( caller, this.uniforms, Mat4.translation(0, -this.grips.height, 0).times(Mat4.translation(...this.grips.find_closest(this.robot.get_end_effector()).position())).times(Mat4.scale(0.3, 0.3, 0.3)), {...this.materials.plastic, color: hex_color("#FFFFFF")});
+    this.shapes.box.draw( caller, this.uniforms, Mat4.translation(...this.grips.find_closest(this.robot.get_end_effector()).position).times(Mat4.scale(0.3, 0.3, 0.3)), {...this.materials.plastic, color: hex_color("#FFFFFF")});
   }
 
   try_to_grab() {
-    const { point, distance } = find_closest(this.grips, this.robot.get_end_effector());
+    const { position, min_dist } = this.grips.find_closest(this.robot.get_end_effector());
 
-    if (distance > 0.3) {
+    if (min_dist > 0.3) {
       return;
     }
 
     // First, set the grabbed grip to the current point
-    this.grabbed_grip = point;
+    this.grabbed_grip_pos = position;
 
     // Then, move the end effector to the grip
-    this.robot.move_ik(vec3(...point));
+    this.robot.move_ik(vec3(...position));
 
     // Next, reverse
     this.robot.reverse();

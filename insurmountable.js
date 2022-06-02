@@ -82,19 +82,20 @@ const Insurmountable_base = defs.Insurmountable_base =
         this.wall_width = 15;
         this.wall_height = 15;
 
-        this.grip_dh = 2; // height difference between two consecutive grips
+        this.grip_dh = 3; // height difference between two consecutive grips
         this.grips = new grips.Grips();
+        this.grip_x_deviation = 8;
         // initialize grips
         for (let curr_h = 0; curr_h < this.wall_height + this.grip_dh; curr_h += this.grip_dh) {
           let x_prev = (this.grips.length > 0) ? this.grips[this.grips.length-1].position()[0] : 0;
-          let x_left = Math.max(x_prev - 2, -this.robot_range_width/2);
-          let x_right = Math.min(x_prev + 2, this.robot_range_width/2);
+          let x_left = Math.max(x_prev - this.grip_x_deviation, -this.robot_range_width/2);
+          let x_right = Math.min(x_prev + this.grip_x_deviation, this.robot_range_width/2);
           let x_curr = Math.random() * (x_right - x_left) + x_left;
           let spline = new spls.Parametric_Spline(5, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
           this.grips.add_grip(spline, 0, 1);
         }
 
-        this.speed_rate = 2.0; // TODO: for IK demo only
+        this.speed_rate = 1.0;
         this.scene_speed_base = 2;
 
         // Declaring the robot
@@ -111,7 +112,10 @@ const Insurmountable_base = defs.Insurmountable_base =
 
         // hand target
         this.target = vec3(5, 10, 0);
-        this.grabbed_grip_pos = null;
+        this.target_rel_vel_base = vec3(0, 0, 0);
+        this.grabbed_grip = null;
+        this.prev_robot_root_pos = this.robot.root.location_matrix.times(vec4(0,0,0,1)).to3();
+        this.curr_robot_root_pos = this.robot.root.location_matrix.times(vec4(0,0,0,1)).to3();
       }
 
       render_animation( caller )
@@ -201,11 +205,15 @@ export class Insurmountable extends Insurmountable_base
     // generate new grips if necessary
     if (n_grips_after > n_grips_before) {
       let x_prev = (this.grips.length > 0) ? this.grips[this.grips.length-1].position()[0] : 0;
-      let x_left = Math.max(x_prev - 2, -this.robot_range_width/2);
-      let x_right = Math.min(x_prev + 2, this.robot_range_width/2);
+      let x_left = Math.max(x_prev - this.grip_x_deviation, -this.robot_range_width/2);
+      let x_right = Math.min(x_prev + this.grip_x_deviation, this.robot_range_width/2);
       let x_curr = (1-Math.random()/2) * (x_right - x_left) + x_left;
       let curr_h = this.scene_height + this.wall_height + this.grip_dh;
-      let spline = new spls.Parametric_Spline(5, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
+      let spline = new spls.Parametric_Spline(1, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
+      // let spline = new spls.Hermite_Spline(1, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
+      // spline.add_ctrl_point([-1, 0, 0], [1, 2, 0]);
+      // spline.add_ctrl_point([0, 0.5, 0], [1, 0, 0]);
+      // spline.add_ctrl_point([1, 0, 0], [1, -2, 0]);
       this.grips.add_grip(spline, 0, 1);
     }
 
@@ -222,14 +230,21 @@ export class Insurmountable extends Insurmountable_base
     let wall_transform = wall_center_transform.times(Mat4.scale(this.robot_range_width/2, this.wall_height/2, 0.1));
     this.shapes.box.draw( caller, this.uniforms, wall_transform, this.materials.wall );
     this.grips.draw( caller, this.uniforms );
-    this.shapes.hermite.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.plastic, color: hex_color("#FFFFFF") }, "LINE_STRIP" );
+    // this.shapes.hermite.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.plastic, color: hex_color("#FFFFFF") }, "LINE_STRIP" );
 
     let t_robot = binary_solve_mono((t) => (this.shapes.hermite.curr_pos(t)[1] - 5), 0, 1, 0.01);
     // let transform_robot = Mat4.translation(this.shapes.hermite.curr_pos(t_robot)[0], 0, 0);
     // this.robot.root.articulation_matrix = transform_robot;
 
-    if (this.grabbed_grip_pos) {
-      this.robot.move_root(this.grabbed_grip_pos);
+    this.target = this.target.plus(this.target_rel_vel_base.times(dt * this.speed_rate));
+    if (this.grabbed_grip) {
+      let root_pos = Mat4.translation(0, -this.grips.height, 0).times(this.grabbed_grip.position().to4(true)).to3();
+      this.robot.move_root(root_pos);
+      const held_hand = this.robot.reversed ? this.robot.tail : this.robot.root;
+      this.prev_robot_root_pos = this.curr_robot_root_pos;
+      this.curr_robot_root_pos = held_hand.location_matrix.times(vec4(0,0,0,1)).to3();
+      console.log(this.prev_robot_root_pos, this.curr_robot_root_pos);
+      this.target = this.target.plus(this.curr_robot_root_pos.minus(this.prev_robot_root_pos));
     }
     this.robot.move_ik(this.target);
 
@@ -249,14 +264,16 @@ export class Insurmountable extends Insurmountable_base
   }
 
   try_to_grab() {
-    const { position, min_dist } = this.grips.find_closest(this.robot.get_end_effector());
+    const { grip, position, min_dist } = this.grips.find_closest(this.robot.get_end_effector());
 
-    if (min_dist > 0.3) {
+    if (min_dist > 1 || !grip.grabable) {
       return;
     }
 
     // First, set the grabbed grip to the current point
-    this.grabbed_grip_pos = position;
+    this.grabbed_grip = grip;
+    grip.grabable = false;
+    grip.color = hex_color("#5ff1e6");
 
     // Then, move the end effector to the grip
     this.robot.move_ik(vec3(...position));
@@ -266,10 +283,14 @@ export class Insurmountable extends Insurmountable_base
 
     // Lastly, change target to the other hand
     this.target = this.robot.get_end_effector();
+    const held_hand = this.robot.reversed ? this.robot.tail : this.robot.root;
+    this.prev_robot_root_pos = this.curr_robot_root_pos = held_hand.location_matrix.times(vec4(0,0,0,1)).to3();
   }
 
   render_controls()
-  {                                 
+  {
+    const button_color = '#f3acac';
+    const target_rel_speed_base = 4;
     // render_controls(): Sets up a panel of interactive HTML elements, including
     // buttons with key bindings for affecting this scene, and live info readouts.
     this.control_panel.innerHTML += "Assignment 2: IK Engine";
@@ -280,10 +301,10 @@ export class Insurmountable extends Insurmountable_base
 
     // WASD
     this.new_line();
-    this.key_triggered_button( "Up", [ "w" ], () => { this.target[1] += 0.1 } );
-    this.key_triggered_button( "Left", [ "a" ], () => { this.target[0] -= 0.1 } );
-    this.key_triggered_button( "Down", [ "s" ], () => { this.target[1] -= 0.1 } );
-    this.key_triggered_button( "Right", [ "d" ], () => { this.target[0] += 0.1 } );
+    this.key_triggered_button( "Up", [ "w" ], () => { this.target_rel_vel_base[1] = target_rel_speed_base }, button_color, () => { this.target_rel_vel_base[1] = 0 } );
+    this.key_triggered_button( "Left", [ "a" ], () => { this.target_rel_vel_base[0] = -target_rel_speed_base }, button_color, () => { this.target_rel_vel_base[0] = 0 } );
+    this.key_triggered_button( "Down", [ "s" ], () => { this.target_rel_vel_base[1] = -target_rel_speed_base }, button_color, () => { this.target_rel_vel_base[1] = 0 } );
+    this.key_triggered_button( "Right", [ "d" ], () => { this.target_rel_vel_base[0] = target_rel_speed_base }, button_color, () => { this.target_rel_vel_base[0] = 0 } );
     this.new_line();
     this.key_triggered_button( "Grab!", [ " " ], this.try_to_grab);
   }

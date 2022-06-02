@@ -1,7 +1,7 @@
 import {tiny, defs} from './examples/common.js';
 
 // Pull these names into this module's scope for convenience:
-const { vec3, vec4, color, Mat4, Shape, Material, Shader, Texture, Component } = tiny;
+const { vec3, vec4, color, hex_color, Mat4, Shape, Material, Shader, Texture, Component } = tiny;
 
 export const grips = {};
 
@@ -14,6 +14,8 @@ const Grip = grips.Grip = class Grip {
         this.t = t;
         this.omega = omega;
         this.shape = ball;
+        this.grabable = true;
+        this.color = hex_color("#ee9494");
     }
 
     position() {
@@ -39,12 +41,14 @@ const Grips = grips.Grips = class Grips extends Array {
 
     update(dh, dt) {
         this.height += dh;
+        console.log("original: ", this.length);
         for (let i = 0; i < this.length; i++) {
             this[i].t += dt * this.omega;
             if (this[i].position()[1] < this.height) {
                 this.remove_grip(i);
                 i--;
             }
+            console.log(this.length);
         }
     }
 
@@ -70,7 +74,7 @@ const Grips = grips.Grips = class Grips extends Array {
         }
         const position = closest_grip.position();
         position[1] -= this.height;
-        return { position: position, min_dist: min_dist };
+        return { grip: closest_grip, position: position, min_dist: min_dist };
     }
 
     draw( caller, uniforms ) {
@@ -78,7 +82,7 @@ const Grips = grips.Grips = class Grips extends Array {
             grip.shape.draw( caller, uniforms, Mat4.translation(0, -this.height, 0)
                                             .times(Mat4.translation(...grip.position()))
                                             .times(Mat4.scale(0.3, 0.3, 0.3))
-                , material_grip);
+                , {...material_grip, color: grip.color});
         }
     }
 }

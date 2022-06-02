@@ -130,6 +130,7 @@ const Hermite_Spline = spls.Hermite_Spline =
                 tangent1,
                 tangent2
             );
+            console.log(T, M, G);
             return vec3(...T.times(M).times(G)[0]);
         }
 

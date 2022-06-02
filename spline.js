@@ -1,11 +1,14 @@
 import {tiny} from "./tiny-graphics.js";
 import {math} from "./tiny-graphics-math.js";
+import {defs} from "./examples/common.js";
 // Pull these names into this module's scope for convenience:
 const { vec3, vec4, color, hex_color, Mat4, Shape, Material, Shader, Texture, Component } = tiny;
 
 const spls = {};
 
 export {spls};
+
+const material_white = { shader: new defs.Phong_Shader(), ambient: .2, diffusivity: 1, specularity: .5, color: color(1,1,1,1) };
 
 /*
 
@@ -101,6 +104,11 @@ const Parametric_Spline = spls.Parametric_Spline =
                 (t-this.arrays.param[ind]) / (this.arrays.param[ind-1]-this.arrays.param[ind])
                 ;
         }
+
+        sync_draw( caller, uniforms, transform_matrix ) {
+            this.sync_card( caller.context );
+            this.draw( caller, uniforms, transform_matrix, {...material_white}, "LINE_STRIP" );
+        }
     }
 
 export
@@ -130,7 +138,6 @@ const Hermite_Spline = spls.Hermite_Spline =
                 tangent1,
                 tangent2
             );
-            console.log(T, M, G);
             return vec3(...T.times(M).times(G)[0]);
         }
 

@@ -41,14 +41,14 @@ const Grips = grips.Grips = class Grips extends Array {
 
     update(dh, dt) {
         this.height += dh;
-        console.log("original: ", this.length);
+        // console.log("original: ", this.length);
         for (let i = 0; i < this.length; i++) {
             this[i].t += dt * this.omega;
             if (this[i].position()[1] < this.height) {
                 this.remove_grip(i);
                 i--;
             }
-            console.log(this.length);
+            // console.log(this.length);
         }
     }
 

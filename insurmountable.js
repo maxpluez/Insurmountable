@@ -1,4 +1,5 @@
 import {tiny, defs} from './examples/common.js';
+import {Text_Line} from './examples/text-demo.js';
 import {txts} from './textures.js';
 import {spls} from './spline.js';
 import {grips} from './grips.js'
@@ -49,7 +50,10 @@ const Insurmountable_base = defs.Insurmountable_base =
         this.shapes = { 'box'  : new defs.Cube(),
           'ball' : new defs.Subdivision_Sphere( 4 ),
           'axis' : new defs.Axis_Arrows(),
-          'hermite' : new spls.Hermite_Spline(100)
+          'hermite' : new spls.Hermite_Spline(100),
+          'cube': new defs.Cube(), 
+          'square': new defs.Square(),
+          'text': new Text_Line(35)
         };
 
         // *** Materials: ***  A "material" used on individual shapes specifies all fields
@@ -109,13 +113,24 @@ const Insurmountable_base = defs.Insurmountable_base =
         this.rigidbody.set_initial_condition(vec3(0,13,0), Mat3.identity(), vec3(1,3,1),vec3(1,1,1));
         this.rigidbody.set_on_hit_ground_callback(()=>this.rigidbody.p[1]*=-1);
 
-
         // hand target
         this.target = vec3(5, 10, 0);
         this.target_rel_vel_base = vec3(0, 0, 0);
         this.grabbed_grip = null;
         this.prev_robot_root_pos = this.robot.root.location_matrix.times(vec4(0,0,0,1)).to3();
         this.curr_robot_root_pos = this.robot.root.location_matrix.times(vec4(0,0,0,1)).to3();
+        
+        // text object
+        const texture = new defs.Textured_Phong( 1 );
+        this.grey       = { shader: phong, color: color( .5,.5,.5,1 ), ambient: 0,
+                                        diffusivity: .3, specularity: .5, smoothness: 10 };
+        this.text_image = { shader: texture, ambient: 1, diffusivity: 0, specularity: 0,
+          texture: new Texture( "assets/text.png" ) };
+
+        // game variables
+        this.score = 0;
+        this.message = "Insurmountable!";
+        this.lost = false;
       }
 
       render_animation( caller )
@@ -232,7 +247,7 @@ export class Insurmountable extends Insurmountable_base
     this.grips.draw( caller, this.uniforms );
     // this.shapes.hermite.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.plastic, color: hex_color("#FFFFFF") }, "LINE_STRIP" );
 
-    let t_robot = binary_solve_mono((t) => (this.shapes.hermite.curr_pos(t)[1] - 5), 0, 1, 0.01);
+    // let t_robot = binary_solve_mono((t) => (this.shapes.hermite.curr_pos(t)[1] - 5), 0, 1, 0.01);
     // let transform_robot = Mat4.translation(this.shapes.hermite.curr_pos(t_robot)[0], 0, 0);
     // this.robot.root.articulation_matrix = transform_robot;
 
@@ -243,10 +258,15 @@ export class Insurmountable extends Insurmountable_base
       const held_hand = this.robot.reversed ? this.robot.tail : this.robot.root;
       this.prev_robot_root_pos = this.curr_robot_root_pos;
       this.curr_robot_root_pos = held_hand.location_matrix.times(vec4(0,0,0,1)).to3();
-      console.log(this.prev_robot_root_pos, this.curr_robot_root_pos);
+      // console.log(this.prev_robot_root_pos, this.curr_robot_root_pos);
       this.target = this.target.plus(this.curr_robot_root_pos.minus(this.prev_robot_root_pos));
     }
     this.robot.move_ik(this.target);
+
+    if (this.robot.get_torso_pos()[1] < 1.1) {
+      this.speed_rate = 0;
+      this.lost = true;
+    }
 
     // Drawing the robot
     this.robot.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.metal, color: hex_color("#C4CACE") });
@@ -261,6 +281,28 @@ export class Insurmountable extends Insurmountable_base
 
     // hightlight the closest grip
     this.shapes.box.draw( caller, this.uniforms, Mat4.translation(...this.grips.find_closest(this.robot.get_end_effector()).position).times(Mat4.scale(0.3, 0.3, 0.3)), {...this.materials.plastic, color: hex_color("#FFFFFF")});
+  
+    // text stuff
+    let bkgd_transform = Mat4.translation(11,2,-1).times(Mat4.scale(5,2,0));
+    let text_transform = Mat4.translation(7,3,-0.9).times(Mat4.scale(5,5,0));
+
+    this.shapes.square.draw( caller, this.uniforms, bkgd_transform, this.grey);
+
+    if (this.lost) {
+      this.message = "You lost!\n\n\n"+`Final score: ${this.score}`;
+    } else {
+      this.message = "Insurmountable!\n\n\n"+`Current score: ${this.score}`;
+    }
+
+    let multi_line_string = this.message.split('\n');
+    // Draw a Text_String for every line in our string
+    for( let line of multi_line_string.slice( 0,30 ) ) { // Assign the string to Text_String, and then draw it
+      // Sample each line and draw
+      this.shapes.text.set_string( line, caller );
+      this.shapes.text.draw( caller, this.uniforms, text_transform.times( Mat4.scale( .05,.05,.05 ) ), this.text_image );
+      // Move basis down a line
+      text_transform.post_multiply( Mat4.translation( 0,-0.06,0 ) );
+    }
   }
 
   try_to_grab() {
@@ -285,6 +327,13 @@ export class Insurmountable extends Insurmountable_base
     this.target = this.robot.get_end_effector();
     const held_hand = this.robot.reversed ? this.robot.tail : this.robot.root;
     this.prev_robot_root_pos = this.curr_robot_root_pos = held_hand.location_matrix.times(vec4(0,0,0,1)).to3();
+
+    this.score += 1;
+    console.log(this.score);
+  }
+
+  render_text() {
+    
   }
 
   render_controls()

@@ -38,7 +38,7 @@ Part 1 Example Load:
 export
 const Parametric_Spline = spls.Parametric_Spline =
     class Parametric_Spline extends Shape {
-        constructor(n_pts, default_col = color(1,1,1,1)) {
+        constructor(n_pts, default_col = color(1,1,1,1), transform_matrix = Mat4.identity()) {
             super("position", "normal", "color", "param", "arclen");
             this.arrays.color.indexed = false;
             for (let i = 0; i < n_pts; i++) {
@@ -51,10 +51,15 @@ const Parametric_Spline = spls.Parametric_Spline =
             this.need_update = false;
             this.need_graphics_sync = false;
             this.default_col = default_col;
+            this.transform_matrix = transform_matrix;
         }
 
         curve_func(t) { return vec3(0,0,0); } // to be implemented by subclasses
         color_func(t) { return color(1,1,1,1); } // to be implemented by subclasses
+
+        curr_pos(t) {
+            return this.transform_matrix.times(this.curve_func(t).to4(true)).to3();
+        }
 
         update_pts() {
             if (this.need_update) {
@@ -66,9 +71,8 @@ const Parametric_Spline = spls.Parametric_Spline =
                     if (i === 0) {
                         this.arrays.arclen[i] = 0;
                     } else {
-                        let prev_position = vec3(this.arrays.position[i-1][0], this.arrays.position[i-1][1], this.arrays.position[i-1][2]);
-                        let curr_position = vec3(this.arrays.position[i][0], this.arrays.position[i][1], this.arrays.position[i][2]);
-                        this.arrays.arclen[i] = this.arrays.arclen[i-1] + prev_position.minus(curr_position).norm();
+                        this.arrays.arclen[i] = this.arrays.arclen[i-1] +
+                            this.arrays.position[i].minus(this.arrays.position[i-1]).norm();
                     }
                 }
                 this.need_update = false;
@@ -102,8 +106,8 @@ const Parametric_Spline = spls.Parametric_Spline =
 export
 const Hermite_Spline = spls.Hermite_Spline =
     class Hermite_Spline extends Parametric_Spline {
-        constructor(n_pts, default_col = color(1,1,1,1)) {
-            super(n_pts, default_col);
+        constructor(n_pts, default_col = color(1,1,1,1), transform_matrix = Mat4.identity()) {
+            super(n_pts, default_col, transform_matrix);
             this.ctrl_pts = [];
             this.ctrl_tgs = [];
             this.ctrl_col = [];
@@ -126,7 +130,7 @@ const Hermite_Spline = spls.Hermite_Spline =
                 tangent1,
                 tangent2
             );
-            return new math.Vector(T.times(M).times(G)[0]).to3();
+            return vec3(...T.times(M).times(G)[0]);
         }
 
         add_ctrl_point(point, tangent, col = this.default_col) {
@@ -160,12 +164,13 @@ const Hermite_Spline = spls.Hermite_Spline =
         }
 
         set_ctrl_points(pts) {
-            this.ctrl_pts = pts;
+            this.ctrl_pts = [];
             this.ctrl_tgs = [];
             for (let i = 0; i < pts.length; i++) {
-                let x_prev = pts[Math.max(i-1, 0)];
-                let x_curr = pts[i];
-                this.ctrl_tgs.push([(x_curr[0] - x_prev[0])/2, (x_curr[1] - x_prev[1])/2, (x_curr[2] - x_prev[2])/2]);
+                let x_prev = vec3(...pts[Math.max(i-1, 0)]);
+                let x_curr = vec3(...pts[i]);
+                this.ctrl_pts.push([...x_curr]);
+                this.ctrl_tgs.push([...x_curr.minus(x_prev).times(1/2)]);
             }
             this.ctrl_col = pts.map((x, i) => hex_color("#FFFFFF"));
             this.need_update = true;

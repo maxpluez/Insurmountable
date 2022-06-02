@@ -1,7 +1,8 @@
 import {tiny, defs} from './examples/common.js';
 import {txts} from './textures.js';
 import {spls} from './spline.js';
-import { Robot } from './robot.js';
+import {grips} from './grips.js'
+import {Robot} from './robot.js';
 import {Skybox} from './skybox.js';
 import {Rigidbody} from "./rigidbody.js";
 
@@ -29,19 +30,6 @@ function binary_solve_mono(f /* a monotonic function */, t_min, t_max, epsilon) 
   }
 }
 
-function find_closest(point_list, target) {
-  let min_dir = -1;
-  let closest_point = null;
-  for (let point of point_list) {
-    let dir = vec3(...point).minus(vec3(...target)).norm();
-    if (min_dir < 0 || dir < min_dir) {
-      min_dir = dir;
-      closest_point = point;
-    }
-  }
-  return closest_point;
-}
-
 export
 const Insurmountable_base = defs.Insurmountable_base =
     class Insurmountable_base extends Component
@@ -60,7 +48,7 @@ const Insurmountable_base = defs.Insurmountable_base =
         // Don't define more than one blueprint for the same thing here.
         this.shapes = { 'box'  : new defs.Cube(),
           'ball' : new defs.Subdivision_Sphere( 4 ),
-          'axis' : new defs.Axis_Arrows() ,
+          'axis' : new defs.Axis_Arrows(),
           'hermite' : new spls.Hermite_Spline(100)
         };
 
@@ -95,14 +83,15 @@ const Insurmountable_base = defs.Insurmountable_base =
         this.wall_height = 15;
 
         this.grip_dh = 2; // height difference between two consecutive grips
-        this.grips = [];
+        this.grips = new grips.Grips();
         // initialize grips
-        for (let curr_h = 0; curr_h < this.wall_height; curr_h += this.grip_dh) {
-          let x_prev = (this.grips.length > 0) ? this.grips[this.grips.length-1][0] : 0;
+        for (let curr_h = 0; curr_h < this.wall_height + this.grip_dh; curr_h += this.grip_dh) {
+          let x_prev = (this.grips.length > 0) ? this.grips[this.grips.length-1].position()[0] : 0;
           let x_left = Math.max(x_prev - 2, -this.robot_range_width/2);
           let x_right = Math.min(x_prev + 2, this.robot_range_width/2);
           let x_curr = Math.random() * (x_right - x_left) + x_left;
-          this.grips.push([x_curr, curr_h, 0]);
+          let spline = new spls.Parametric_Spline(5, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
+          this.grips.add_grip(spline, 0, 1);
         }
 
         this.speed_rate = 2.0; // TODO: for IK demo only
@@ -121,7 +110,7 @@ const Insurmountable_base = defs.Insurmountable_base =
 
 
         // hand target
-        this.target = vec3(5, 10, 0)
+        this.target = vec3(5, 10, 0);
       }
 
       render_animation( caller )
@@ -206,46 +195,36 @@ export class Insurmountable extends Insurmountable_base
     let n_grips_after = Math.floor(this.scene_height / this.grip_dh);
 
     // update grips
-    for (let i = 0; i < this.grips.length; i++) {
-      this.grips[i][1] -= dt * this.speed_rate * this.scene_speed_base;
-      if (this.grips[i][1] < -2 * this.grip_dh) { // out of wall
-        this.grips.splice(i, 1);
-        i--;
-      }
-    }
+    this.grips.update(dt * this.speed_rate * this.scene_speed_base, dt);
 
     // generate new grips if necessary
     if (n_grips_after > n_grips_before) {
-      let x_prev = (this.grips.length > 0) ? this.grips[this.grips.length-1][0] : 0;
+      let x_prev = (this.grips.length > 0) ? this.grips[this.grips.length-1].position()[0] : 0;
       let x_left = Math.max(x_prev - 2, -this.robot_range_width/2);
       let x_right = Math.min(x_prev + 2, this.robot_range_width/2);
       let x_curr = (1-Math.random()/2) * (x_right - x_left) + x_left;
-      this.grips.push([x_curr, this.scene_height - n_grips_after * this.grip_dh + this.wall_height + this.grip_dh, 0]);
+      let curr_h = this.scene_height + this.wall_height + this.grip_dh;
+      let spline = new spls.Parametric_Spline(5, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
+      this.grips.add_grip(spline, 0, 1);
     }
 
     // update Hermite Spline
-    this.shapes.hermite.set_ctrl_points(this.grips);
+    this.shapes.hermite.set_ctrl_points(this.grips.position_list());
     this.shapes.hermite.sync_card( caller.context );
 
     // !!! Draw ground
     let floor_transform = Mat4.translation(0, 0, 0).times(Mat4.scale(50, 0.01, 50));
     this.shapes.box.draw( caller, this.uniforms, floor_transform, this.materials.grass);
 
-    // TODO: you can change the wall and board as needed.
+    // wall
     let wall_center_transform = Mat4.translation(0, this.wall_height/2, -1.2);
     let wall_transform = wall_center_transform.times(Mat4.scale(this.robot_range_width/2, this.wall_height/2, 0.1));
     this.shapes.box.draw( caller, this.uniforms, wall_transform, this.materials.wall );
-    for (let grip of this.grips) {
-      if (grip[1] > this.wall_height || grip[1] < 0) {
-        continue;
-      }
-      let grip_transform = Mat4.translation(grip[0], grip[1],grip[2]).times(Mat4.scale(0.3, 0.3, 0.3));
-      this.shapes.ball.draw( caller, this.uniforms, grip_transform, { ...this.materials.plastic, color: blue });
-    }
+    this.grips.draw( caller, this.uniforms );
     this.shapes.hermite.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.plastic, color: hex_color("#FFFFFF") }, "LINE_STRIP" );
 
-    let t_robot = binary_solve_mono((t) => (this.shapes.hermite.curve_func(t)[1] - 5), 0, 1, 0.01);
-    // let transform_robot = Mat4.translation(this.shapes.hermite.curve_func(t_robot)[0], 0, 0);
+    let t_robot = binary_solve_mono((t) => (this.shapes.hermite.curr_pos(t)[1] - 5), 0, 1, 0.01);
+    // let transform_robot = Mat4.translation(this.shapes.hermite.curr_pos(t_robot)[0], 0, 0);
     // this.robot.root.articulation_matrix = transform_robot;
 
     this.robot.move(this.target);
@@ -261,7 +240,8 @@ export class Insurmountable extends Insurmountable_base
     const target_transform = Mat4.translation(this.target[0], this.target[1], 1).times(Mat4.scale(0.1, 0.1, 0.1));
     this.shapes.box.draw( caller, this.uniforms, target_transform, { ...this.materials.metal, color: hex_color("#FF0000") });
 
-    this.shapes.box.draw( caller, this.uniforms, Mat4.translation(...find_closest(this.grips, this.target)).times(Mat4.scale(0.5, 0.5, 0.5)), {...this.materials.plastic, color: hex_color("#FFFFFF")});
+    // hightlight the closest grip
+    this.shapes.box.draw( caller, this.uniforms, Mat4.translation(0, -this.grips.height, 0).times(Mat4.translation(...this.grips.find_closest(this.target).position())).times(Mat4.scale(0.5, 0.5, 0.5)), {...this.materials.plastic, color: hex_color("#FFFFFF")});
   }
 
   render_controls()

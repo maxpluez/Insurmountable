@@ -270,7 +270,7 @@ export const Robot = class Robot {
         }
     }
 
-    move(target) {
+    move_ik(target) {
         let end_effector = this.get_end_effector();
         let anchor_joint = this.r_elbow;
         let anchor;
@@ -296,6 +296,11 @@ export const Robot = class Robot {
 
             count += 1;
         }
+    }
+
+    move_root(target) {
+        const root_arc = this.reversed ? this.tail : this.root;
+        root_arc.location_matrix = Mat4.translation(...target);
     }
 }
 

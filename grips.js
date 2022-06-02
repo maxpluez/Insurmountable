@@ -68,7 +68,9 @@ const Grips = grips.Grips = class Grips extends Array {
                 closest_grip = grip;
             }
         }
-        return closest_grip;
+        const position = closest_grip.position();
+        position[1] -= this.height;
+        return { position: position, min_dist: min_dist };
     }
 
     draw( caller, uniforms ) {

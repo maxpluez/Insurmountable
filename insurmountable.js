@@ -111,7 +111,7 @@ const Insurmountable_base = defs.Insurmountable_base =
         this.rigidbody = new Rigidbody();
         let scale = [1, 2, 1.5];
         this.rigidbody.set_property(new defs.Cube(), 1, Rigidbody.cube_inertia(1, scale), scale, -3.981);
-        this.rigidbody.set_initial_condition(vec3(0,13,0), Mat3.identity(), vec3(1,3,1),vec3(1,1,1));
+        this.rigidbody.set_initial_condition(vec3(10,10,-2), Mat3.identity(), vec3(1,3,-1), vec3(1,1,1));
         this.rigidbody.set_on_hit_ground_callback(()=>this.rigidbody.p[1]*=-1);
 
         // hand target
@@ -152,7 +152,7 @@ const Insurmountable_base = defs.Insurmountable_base =
 
           // !!! Camera changed here
           // TODO: you can change the camera as needed.
-          Shader.assign_camera( Mat4.look_at (vec3 (15, 10, 30), vec3 (5, 10, 0), vec3 (0, 1, 0)), this.uniforms );
+          Shader.assign_camera( Mat4.look_at (vec3 (15, 10, 30), vec3 (5, 9, 0), vec3 (0, 1, 0)), this.uniforms );
         }
         this.uniforms.projection_transform = Mat4.perspective( Math.PI/4, caller.width/caller.height, 0.01, 500000 );
 
@@ -221,7 +221,7 @@ export class Insurmountable extends Insurmountable_base
     let n_grips_after = Math.floor(this.scene_height / this.grip_dh);
 
     // update grips
-    this.grips.update(dt * this.speed_rate * this.scene_speed_base, dt * this.speed_rate);
+    this.score -= this.grips.update(dt * this.speed_rate * this.scene_speed_base, dt * this.speed_rate);
 
     // generate new grips if necessary
     if (n_grips_after > n_grips_before) {

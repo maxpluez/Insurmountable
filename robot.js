@@ -111,6 +111,14 @@ export const Robot = class Robot {
         return (this.l_wrist.get_absolute_location(this.reversed).times(this.l_hand_node.transform_matrix)).times(vec4(0,0,0,1)).to3();
     }
 
+    get_torso_pos() {
+        if (!this.reversed) {
+            return (this.l_shoulder.get_absolute_location(this.reversed).times(this.torso_node.transform_matrix)).times(vec4(0,0,0,1)).to3();
+        } else {
+            return (this.r_shoulder.get_absolute_location(this.reversed).times(this.torso_node.transform_matrix)).times(vec4(0,0,0,1)).to3();
+        }
+    }
+
     get_end_effector() {
         if (!this.reversed) {
             return this.get_r_hand_pos();

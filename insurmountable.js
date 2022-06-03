@@ -83,8 +83,8 @@ const Insurmountable_base = defs.Insurmountable_base =
         // Declaring walls and grips
         this.scene_height = 0;
         this.robot_range_width = 10;
-        this.wall_width = 15;
-        this.wall_height = 15;
+        this.wall_width = 17;
+        this.wall_height = 20;
 
         this.grip_dh = 3; // height difference between two consecutive grips
         this.grips = new grips.Grips();
@@ -215,7 +215,7 @@ export class Insurmountable extends Insurmountable_base
     let n_grips_after = Math.floor(this.scene_height / this.grip_dh);
 
     // update grips
-    this.grips.update(dt * this.speed_rate * this.scene_speed_base, dt);
+    this.grips.update(dt * this.speed_rate * this.scene_speed_base, dt * this.speed_rate);
 
     // generate new grips if necessary
     if (n_grips_after > n_grips_before) {
@@ -241,7 +241,7 @@ export class Insurmountable extends Insurmountable_base
 
     // wall
     let wall_center_transform = Mat4.translation(0, this.wall_height/2, -1.2);
-    let wall_transform = wall_center_transform.times(Mat4.scale(this.robot_range_width/2, this.wall_height/2, 0.1));
+    let wall_transform = wall_center_transform.times(Mat4.scale(this.wall_width/2, this.wall_height/2, 0.1));
     this.shapes.box.draw( caller, this.uniforms, wall_transform, this.materials.wall );
     this.grips.draw( caller, this.uniforms );
     // this.shapes.hermite.sync_draw( caller, this.uniforms, Mat4.identity() );
@@ -265,10 +265,11 @@ export class Insurmountable extends Insurmountable_base
       this.speed_rate = 0;
       this.lost = true;
       this.final_time = Math.round(t);
+      this.speed_rate = 0;
     }
 
     // Drawing the robot
-    this.robot.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.metal, color: hex_color("#C4CACE") });
+    this.robot.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.metal, color: hex_color("#ADD8E6") });
     this.skybox.display(caller, this.uniforms, 1000);
 
     this.rigidbody.update(dt);
@@ -282,8 +283,8 @@ export class Insurmountable extends Insurmountable_base
     this.shapes.box.draw( caller, this.uniforms, Mat4.translation(...this.grips.find_closest(this.robot.get_end_effector()).position).times(Mat4.scale(0.3, 0.3, 0.3)), {...this.materials.plastic, color: hex_color("#FFFFFF")});
   
     // text stuff
-    let bkgd_transform = Mat4.translation(11,2,-1).times(Mat4.scale(5,2,0));
-    let text_transform = Mat4.translation(7,3,-0.9).times(Mat4.scale(5,5,0));
+    let bkgd_transform = Mat4.translation(14,2,-1).times(Mat4.scale(5,2,0));
+    let text_transform = Mat4.translation(10,3,-0.9).times(Mat4.scale(5,5,0));
 
     this.shapes.square.draw( caller, this.uniforms, bkgd_transform, this.grey);
 
@@ -333,14 +334,10 @@ export class Insurmountable extends Insurmountable_base
     }
   }
 
-  render_text() {
-    
-  }
-
   render_controls()
   {
     const button_color = '#f3acac';
-    const target_rel_speed_base = 4;
+    const target_rel_speed_base = 6;
     // render_controls(): Sets up a panel of interactive HTML elements, including
     // buttons with key bindings for affecting this scene, and live info readouts.
     this.control_panel.innerHTML += "Assignment 2: IK Engine";

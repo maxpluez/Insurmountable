@@ -104,7 +104,7 @@ const Insurmountable_base = defs.Insurmountable_base =
 
         // Declaring the robot
         this.robot = new Robot();
-        this.robot.root.location_matrix = Mat4.translation(0,10,0); // Temp offset
+        this.robot.root.location_matrix = Mat4.translation(-2.5,10,0); // Temp offset
 
         this.skybox = new Skybox();
         this.rigidbody = new Rigidbody();
@@ -114,7 +114,7 @@ const Insurmountable_base = defs.Insurmountable_base =
         this.rigidbody.set_on_hit_ground_callback(()=>this.rigidbody.p[1]*=-1);
 
         // hand target
-        this.target = vec3(5, 10, 0);
+        this.target = vec3(2.7, 10, 0);
         this.target_rel_vel_base = vec3(0, 0, 0);
         this.grabbed_grip = null;
         this.prev_robot_root_pos = this.robot.root.location_matrix.times(vec4(0,0,0,1)).to3();
@@ -263,9 +263,10 @@ export class Insurmountable extends Insurmountable_base
     }
     this.robot.move_ik(this.target);
 
-    if (this.robot.get_torso_pos()[1] < 1.1) {
+    if (this.robot.get_torso_pos()[1] < 1.1 && this.speed_rate != 0) {
       this.speed_rate = 0;
       this.lost = true;
+      this.final_time = Math.round(t);
     }
 
     // Drawing the robot
@@ -289,9 +290,9 @@ export class Insurmountable extends Insurmountable_base
     this.shapes.square.draw( caller, this.uniforms, bkgd_transform, this.grey);
 
     if (this.lost) {
-      this.message = "You lost!\n\n\n"+`Final score: ${this.score}`;
+      this.message = "You lost!\n\n\n"+`Final score: ${this.score}\n\n\n`+`Time survived: ${this.final_time}s`;
     } else {
-      this.message = "Insurmountable!\n\n\n"+`Current score: ${this.score}`;
+      this.message = "Insurmountable!\n\n\n"+`Current score: ${this.score}\n\n\n`+`Current speed: ${this.speed_rate}x`;
     }
 
     let multi_line_string = this.message.split('\n');
@@ -329,7 +330,9 @@ export class Insurmountable extends Insurmountable_base
     this.prev_robot_root_pos = this.curr_robot_root_pos = held_hand.location_matrix.times(vec4(0,0,0,1)).to3();
 
     this.score += 1;
-    console.log(this.score);
+    if (this.score != 0 && this.score % 5 == 0) {
+      this.speed_rate += 0.5;
+    }
   }
 
   render_text() {

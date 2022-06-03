@@ -45,7 +45,7 @@ const Grips = grips.Grips = class Grips extends Array {
         this.height += dh;
         for (let i = this.length-1; i >= 0; i--) {
             this[i].t += dt * this[i].omega;
-            if (this[i].position()[1] < this.height) {
+            if (this[i].position()[1] < this.height - 20 /* TODO: so does here: change to some calculated value */) {
                 if (this[i].grabable) counter++;
                 this.remove_grip(i);
             }

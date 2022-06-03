@@ -84,7 +84,7 @@ const Insurmountable_base = defs.Insurmountable_base =
         this.scene_height = 0;
         this.robot_range_width = 10;
         this.wall_width = 17;
-        this.wall_height = 25;
+        this.wall_height = 60;
 
         this.grip_dh = 3; // height difference between two consecutive grips
         this.grips = new grips.Grips();
@@ -229,7 +229,7 @@ export class Insurmountable extends Insurmountable_base
       let x_left = Math.max(x_prev - this.grip_x_deviation, -this.robot_range_width/2);
       let x_right = Math.min(x_prev + this.grip_x_deviation, this.robot_range_width/2);
       let x_curr = (1-Math.random()/2) * (x_right - x_left) + x_left;
-      let curr_h = this.scene_height + this.wall_height;
+      let curr_h = this.scene_height + this.wall_height/2;
       // let spline = new spls.Parametric_Spline(1, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
       let spline = new spls.Hermite_Spline(1, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
       spline.add_ctrl_point([-1, 0, 0], [1, 2, 0]);
@@ -242,11 +242,13 @@ export class Insurmountable extends Insurmountable_base
     this.shapes.hermite.set_ctrl_points(this.grips.position_list());
 
     // Draw ground
-    let floor_transform = Mat4.translation(0, 0, 0).times(Mat4.scale(50, 0.01, 50));
-    this.shapes.box.draw( caller, this.uniforms, floor_transform, this.materials.grass);
+    if (this.scene_height < 40) { // TODO: change the hardcoded 40 to some calculated value for generality
+      let floor_transform = Mat4.translation(0, -this.scene_height, 0).times(Mat4.scale(50, 0.01, 50));
+      this.shapes.box.draw( caller, this.uniforms, floor_transform, this.materials.grass);
+    }
 
     // wall
-    let wall_center_transform = Mat4.translation(0, this.wall_height/2, -1.2);
+    let wall_center_transform = Mat4.translation(0, this.wall_height/2 * 0, -1.2);
     let wall_transform = wall_center_transform.times(Mat4.scale(this.wall_width/2, this.wall_height/2, 0.1));
     this.shapes.box.draw( caller, this.uniforms, wall_transform, this.materials.wall );
     this.grips.draw( caller, this.uniforms );
@@ -267,7 +269,7 @@ export class Insurmountable extends Insurmountable_base
     }
     this.robot.move_ik(this.target);
 
-    if (this.robot.get_torso_pos()[1] < 1.1 && this.speed_rate != 0) {
+    if (this.robot.get_torso_pos()[1] < -4 && this.speed_rate != 0) {
       this.lost = true;
       this.final_time = t;
       this.curr_speed_rate = 0;

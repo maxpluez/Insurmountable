@@ -90,16 +90,17 @@ const Insurmountable_base = defs.Insurmountable_base =
         this.grips = new grips.Grips();
         this.grip_x_deviation = 8;
         // initialize grips
-        for (let curr_h = 0; curr_h < this.wall_height + this.grip_dh; curr_h += this.grip_dh) {
-          let x_prev = (this.grips.length > 0) ? this.grips[this.grips.length-1].position()[0] : 0;
-          let x_left = Math.max(x_prev - this.grip_x_deviation, -this.robot_range_width/2);
-          let x_right = Math.min(x_prev + this.grip_x_deviation, this.robot_range_width/2);
-          let x_curr = Math.random() * (x_right - x_left) + x_left;
-          let spline = new spls.Parametric_Spline(5, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
-          this.grips.add_grip(spline, 0, 1);
-        }
+        // for (let curr_h = 0; curr_h < this.wall_height + this.grip_dh; curr_h += this.grip_dh) {
+        //   let x_prev = (this.grips.length > 0) ? this.grips[this.grips.length-1].position()[0] : 0;
+        //   let x_left = Math.max(x_prev - this.grip_x_deviation, -this.robot_range_width/2);
+        //   let x_right = Math.min(x_prev + this.grip_x_deviation, this.robot_range_width/2);
+        //   let x_curr = Math.random() * (x_right - x_left) + x_left;
+        //   let spline = new spls.Parametric_Spline(5, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
+        //   this.grips.add_grip(spline, 0, 1);
+        // }
 
         this.speed_rate = 1.0;
+        this.curr_speed_rate = 1.0;
         this.scene_speed_base = 2;
 
         // Declaring the robot
@@ -131,6 +132,8 @@ const Insurmountable_base = defs.Insurmountable_base =
         this.score = 0;
         this.message = "Insurmountable!";
         this.lost = false;
+        this.pause = false;
+        this.is_first_grip = true;
       }
 
       render_animation( caller )
@@ -149,7 +152,7 @@ const Insurmountable_base = defs.Insurmountable_base =
 
           // !!! Camera changed here
           // TODO: you can change the camera as needed.
-          Shader.assign_camera( Mat4.look_at (vec3 (0, 8, 25), vec3 (0, 5, 0), vec3 (0, 1, 0)), this.uniforms );
+          Shader.assign_camera( Mat4.look_at (vec3 (15, 10, 30), vec3 (5, 10, 0), vec3 (0, 1, 0)), this.uniforms );
         }
         this.uniforms.projection_transform = Mat4.perspective( Math.PI/4, caller.width/caller.height, 0.01, 500000 );
 
@@ -206,6 +209,9 @@ export class Insurmountable extends Insurmountable_base
     const t = this.t = this.uniforms.animation_time/1000;
     const dt = this.dt = this.uniforms.animation_delta_time/1000;
 
+    this.speed_rate = this.pause ? 0 : this.curr_speed_rate;
+    if (this.is_first_grip) this.first_grip_time = t;
+
     // update texture
     let n_grips_before = Math.floor(this.scene_height / this.grip_dh);
     this.scene_height += dt * this.speed_rate * this.scene_speed_base;
@@ -235,7 +241,7 @@ export class Insurmountable extends Insurmountable_base
     // update Hermite Spline
     this.shapes.hermite.set_ctrl_points(this.grips.position_list());
 
-    // !!! Draw ground
+    // Draw ground
     let floor_transform = Mat4.translation(0, 0, 0).times(Mat4.scale(50, 0.01, 50));
     this.shapes.box.draw( caller, this.uniforms, floor_transform, this.materials.grass);
 
@@ -262,36 +268,38 @@ export class Insurmountable extends Insurmountable_base
     this.robot.move_ik(this.target);
 
     if (this.robot.get_torso_pos()[1] < 1.1 && this.speed_rate != 0) {
-      this.speed_rate = 0;
       this.lost = true;
-      this.final_time = Math.round(t);
-      this.speed_rate = 0;
+      this.final_time = t;
+      this.curr_speed_rate = 0;
     }
 
     // Drawing the robot
     this.robot.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.metal, color: hex_color("#ADD8E6") });
     this.skybox.display(caller, this.uniforms, 1000);
 
+    // Rigit body
     this.rigidbody.update(dt);
     this.rigidbody.draw(caller, this.uniforms, this.materials.plastic);
 
     // Drawing target for debugging purposes
-    const target_transform = Mat4.translation(this.target[0], this.target[1], 1).times(Mat4.scale(0.1, 0.1, 0.1));
+    const target_transform = Mat4.translation(this.target[0], this.target[1], 0.3).times(Mat4.scale(0.1, 0.1, 0.1));
     this.shapes.box.draw( caller, this.uniforms, target_transform, { ...this.materials.metal, color: hex_color("#FF0000") });
 
     // hightlight the closest grip
-    this.shapes.box.draw( caller, this.uniforms, Mat4.translation(...this.grips.find_closest(this.robot.get_end_effector()).position).times(Mat4.scale(0.3, 0.3, 0.3)), {...this.materials.plastic, color: hex_color("#FFFFFF")});
+    // this.shapes.box.draw( caller, this.uniforms, Mat4.translation(...this.grips.find_closest(this.robot.get_end_effector()).position)
+    //   .times(Mat4.scale(0.3, 0.3, 0.3)), {...this.materials.plastic, color: hex_color("#FFFFFF")});
   
     // text stuff
     let bkgd_transform = Mat4.translation(14,2,-1).times(Mat4.scale(5,2,0));
     let text_transform = Mat4.translation(10,3,-0.9).times(Mat4.scale(5,5,0));
 
     this.shapes.square.draw( caller, this.uniforms, bkgd_transform, this.grey);
-
-    if (this.lost) {
-      this.message = "You lost!\n\n\n"+`Final score: ${this.score}\n\n\n`+`Time survived: ${this.final_time}s`;
+    if (this.is_first_grip) {
+      this.message = "Insurmountable!\n\n\n"+"Grab a grip to start\n\n\n"+"Made with <3 by Bruins";
+    } else if (this.lost) {
+      this.message = "You lost!\n\n\n"+`Final score: ${this.score}\n\n\n`+`Time survived: ${Math.round(this.final_time-this.first_grip_time)}s`;
     } else {
-      this.message = "Insurmountable!\n\n\n"+`Current score: ${this.score}\n\n\n`+`Current speed: ${this.speed_rate}x`;
+      this.message = "Insurmountable!\n\n\n"+`Current score: ${this.score}\n\n\n`+`Current speed: ${this.curr_speed_rate}x`;
     }
 
     let multi_line_string = this.message.split('\n');
@@ -315,7 +323,7 @@ export class Insurmountable extends Insurmountable_base
     // First, set the grabbed grip to the current point
     this.grabbed_grip = grip;
     grip.grabable = false;
-    grip.color = hex_color("#5ff1e6");
+    grip.color = hex_color("#77DD77");
 
     // Then, move the end effector to the grip
     this.robot.move_ik(vec3(...position));
@@ -328,9 +336,11 @@ export class Insurmountable extends Insurmountable_base
     const held_hand = this.robot.reversed ? this.robot.tail : this.robot.root;
     this.prev_robot_root_pos = this.curr_robot_root_pos = held_hand.location_matrix.times(vec4(0,0,0,1)).to3();
 
+    this.is_first_grip = false;
+
     this.score += 1;
     if (this.score != 0 && this.score % 5 == 0) {
-      this.speed_rate += 0.5;
+      this.curr_speed_rate += 0.5;
     }
   }
 
@@ -340,19 +350,20 @@ export class Insurmountable extends Insurmountable_base
     const target_rel_speed_base = 6;
     // render_controls(): Sets up a panel of interactive HTML elements, including
     // buttons with key bindings for affecting this scene, and live info readouts.
-    this.control_panel.innerHTML += "Assignment 2: IK Engine";
-    this.new_line();    
+    // this.control_panel.innerHTML += "Insurmountable: a rock-climbing game";  
+
     // TODO: You can add your button events for debugging. (optional)
-    this.key_triggered_button( "Debug", [ "Shift", "D" ], () => { this.debug = !this.debug; } );
-    this.key_triggered_button( "Pause", [ "=" ], () => { this.speed_rate = (this.speed_rate === 0) ? 1 : 0; } );
+    // this.key_triggered_button( "Debug", [ "Shift", "D" ], () => { this.debug = !this.debug; } );
+    // this.new_line();
 
     // WASD
-    this.new_line();
     this.key_triggered_button( "Up", [ "w" ], () => { this.target_rel_vel_base[1] = target_rel_speed_base }, button_color, () => { this.target_rel_vel_base[1] = 0 } );
     this.key_triggered_button( "Left", [ "a" ], () => { this.target_rel_vel_base[0] = -target_rel_speed_base }, button_color, () => { this.target_rel_vel_base[0] = 0 } );
     this.key_triggered_button( "Down", [ "s" ], () => { this.target_rel_vel_base[1] = -target_rel_speed_base }, button_color, () => { this.target_rel_vel_base[1] = 0 } );
     this.key_triggered_button( "Right", [ "d" ], () => { this.target_rel_vel_base[0] = target_rel_speed_base }, button_color, () => { this.target_rel_vel_base[0] = 0 } );
+    // Other buttons
     this.new_line();
     this.key_triggered_button( "Grab!", [ " " ], this.try_to_grab);
+    this.key_triggered_button( "Pause", [ "=" ], () => { this.pause = !this.pause } );
   }
 }

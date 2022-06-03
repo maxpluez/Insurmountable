@@ -30,7 +30,8 @@ const Grips = grips.Grips = class Grips extends Array {
     }
 
     add_grip(spline, init_t, omega) {
-        this.push(new Grip(spline, init_t, omega));
+        let grip = new Grip(spline, init_t, omega);
+        this.push(grip);
     }
 
     remove_grip(ind) {
@@ -41,14 +42,11 @@ const Grips = grips.Grips = class Grips extends Array {
 
     update(dh, dt) {
         this.height += dh;
-        // console.log("original: ", this.length);
-        for (let i = 0; i < this.length; i++) {
-            this[i].t += dt * this.omega;
+        for (let i = this.length-1; i >= 0; i--) {
+            this[i].t += dt * this[i].omega;
             if (this[i].position()[1] < this.height) {
                 this.remove_grip(i);
-                i--;
             }
-            // console.log(this.length);
         }
     }
 
@@ -83,6 +81,7 @@ const Grips = grips.Grips = class Grips extends Array {
                                             .times(Mat4.translation(...grip.position()))
                                             .times(Mat4.scale(0.3, 0.3, 0.3))
                 , {...material_grip, color: grip.color});
+            // grip.spline.sync_draw( caller, uniforms, Mat4.translation(0, -this.height, 0));
         }
     }
 }

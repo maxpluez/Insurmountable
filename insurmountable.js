@@ -223,18 +223,17 @@ export class Insurmountable extends Insurmountable_base
       let x_left = Math.max(x_prev - this.grip_x_deviation, -this.robot_range_width/2);
       let x_right = Math.min(x_prev + this.grip_x_deviation, this.robot_range_width/2);
       let x_curr = (1-Math.random()/2) * (x_right - x_left) + x_left;
-      let curr_h = this.scene_height + this.wall_height + this.grip_dh;
-      let spline = new spls.Parametric_Spline(1, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
-      // let spline = new spls.Hermite_Spline(1, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
-      // spline.add_ctrl_point([-1, 0, 0], [1, 2, 0]);
-      // spline.add_ctrl_point([0, 0.5, 0], [1, 0, 0]);
-      // spline.add_ctrl_point([1, 0, 0], [1, -2, 0]);
+      let curr_h = this.scene_height + this.wall_height;
+      // let spline = new spls.Parametric_Spline(1, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
+      let spline = new spls.Hermite_Spline(1, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
+      spline.add_ctrl_point([-1, 0, 0], [1, 2, 0]);
+      spline.add_ctrl_point([0, 0.5, 0], [1, 0, 0]);
+      spline.add_ctrl_point([1, 0, 0], [1, -2, 0]);
       this.grips.add_grip(spline, 0, 1);
     }
 
     // update Hermite Spline
     this.shapes.hermite.set_ctrl_points(this.grips.position_list());
-    this.shapes.hermite.sync_card( caller.context );
 
     // !!! Draw ground
     let floor_transform = Mat4.translation(0, 0, 0).times(Mat4.scale(50, 0.01, 50));
@@ -245,7 +244,7 @@ export class Insurmountable extends Insurmountable_base
     let wall_transform = wall_center_transform.times(Mat4.scale(this.robot_range_width/2, this.wall_height/2, 0.1));
     this.shapes.box.draw( caller, this.uniforms, wall_transform, this.materials.wall );
     this.grips.draw( caller, this.uniforms );
-    // this.shapes.hermite.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.plastic, color: hex_color("#FFFFFF") }, "LINE_STRIP" );
+    // this.shapes.hermite.sync_draw( caller, this.uniforms, Mat4.identity() );
 
     // let t_robot = binary_solve_mono((t) => (this.shapes.hermite.curr_pos(t)[1] - 5), 0, 1, 0.01);
     // let transform_robot = Mat4.translation(this.shapes.hermite.curr_pos(t_robot)[0], 0, 0);
@@ -258,7 +257,6 @@ export class Insurmountable extends Insurmountable_base
       const held_hand = this.robot.reversed ? this.robot.tail : this.robot.root;
       this.prev_robot_root_pos = this.curr_robot_root_pos;
       this.curr_robot_root_pos = held_hand.location_matrix.times(vec4(0,0,0,1)).to3();
-      // console.log(this.prev_robot_root_pos, this.curr_robot_root_pos);
       this.target = this.target.plus(this.curr_robot_root_pos.minus(this.prev_robot_root_pos));
     }
     this.robot.move_ik(this.target);

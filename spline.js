@@ -172,13 +172,15 @@ const Hermite_Spline = spls.Hermite_Spline =
         }
 
         set_ctrl_points(pts) {
+            // set points according to Catmull-Rom rule
             this.ctrl_pts = [];
             this.ctrl_tgs = [];
             for (let i = 0; i < pts.length; i++) {
                 let x_prev = vec3(...pts[Math.max(i-1, 0)]);
                 let x_curr = vec3(...pts[i]);
+                let x_next = vec3(...pts[Math.min(i+1, pts.length-1)]);
                 this.ctrl_pts.push([...x_curr]);
-                this.ctrl_tgs.push([...x_curr.minus(x_prev).times(1/2)]);
+                this.ctrl_tgs.push([...x_next.minus(x_prev).times(1/2)]);
             }
             this.ctrl_col = pts.map((x, i) => hex_color("#FFFFFF"));
             this.need_update = true;

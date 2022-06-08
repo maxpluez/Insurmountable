@@ -232,9 +232,8 @@ export class Insurmountable extends Insurmountable_base
       let curr_h = this.scene_height + this.wall_height/2;
       // let spline = new spls.Parametric_Spline(1, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
       let spline = new spls.Hermite_Spline(1, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
-      spline.add_ctrl_point([-1, 0, 0], [1, 2, 0]);
-      spline.add_ctrl_point([0, 0.5, 0], [1, 0, 0]);
-      spline.add_ctrl_point([1, 0, 0], [1, -2, 0]);
+      let pts = [[-1,0,0],[0,0.5,0],[1,0,0]];
+      spline.set_ctrl_points(pts);
       this.grips.add_grip(spline, 0, 1);
     }
 

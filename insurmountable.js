@@ -31,6 +31,10 @@ function binary_solve_mono(f /* a monotonic function */, t_min, t_max, epsilon) 
   }
 }
 
+function generate_random_x(max) {
+  return Math.random() * max - max / 2;
+}
+
 export
 const Insurmountable_base = defs.Insurmountable_base =
     class Insurmountable_base extends Component
@@ -74,6 +78,12 @@ const Insurmountable_base = defs.Insurmountable_base =
             color: hex_color("#000000"),
             ambient: .6, diffusivity: 0.3, specularity: 0.1,
             texture: new Texture("assets/rock.jpg", "NEAREST")
+          },
+          warning:  {
+            shader: tex_phong,
+            color: hex_color("#000000"),
+            ambient: 1, diffusivity: 0.3, specularity: 0.1,
+            texture: new Texture("assets/warning.png")
           }
         }
 
@@ -107,12 +117,11 @@ const Insurmountable_base = defs.Insurmountable_base =
         this.robot = new Robot();
         this.robot.root.location_matrix = Mat4.translation(-2.5,10,0); // Temp offset
 
+        // Rigid bodies
         this.skybox = new Skybox();
-        this.rigidbody = new Rigidbody();
-        let scale = [1, 2, 1.5];
-        this.rigidbody.set_property(new defs.Cube(), 1, Rigidbody.cube_inertia(1, scale), scale, -3.981);
-        this.rigidbody.set_initial_condition(vec3(10,10,-2), Mat3.identity(), vec3(1,3,-1), vec3(1,1,1));
-        this.rigidbody.set_on_hit_ground_callback(()=>this.rigidbody.p[1]*=-1);
+        this.rigidbodies = [];
+        this.rigidbody_generated = false;
+        this.random_x = generate_random_x(this.wall_width);
 
         // hand target
         this.target = vec3(2.7, 10, 0);
@@ -279,8 +288,25 @@ export class Insurmountable extends Insurmountable_base
     this.skybox.display(caller, this.uniforms, 1000);
 
     // Rigit body
-    this.rigidbody.update(dt);
-    this.rigidbody.draw(caller, this.uniforms, this.materials.plastic);
+    for (const rigidbody of this.rigidbodies) {
+      rigidbody.update(dt);
+      rigidbody.draw(caller, this.uniforms, this.materials.plastic);
+    }
+    // Every 10 seconds a warning shows and a rigid body falls
+    if (t % 10 < 3) {
+      this.rigidbody_generated = false;
+      let warning_transform = Mat4.translation(this.random_x, 20, 0).times(Mat4.scale(1, 1, 0.1));
+      this.shapes.box.draw(caller, this.uniforms, warning_transform, this.materials.warning);
+    } else if (!this.rigidbody_generated) {
+      let new_rigidbody = new Rigidbody();
+      let scale = [1, 2, 1.5];
+      new_rigidbody.set_property(new defs.Cube(), 1, Rigidbody.cube_inertia(1, scale), scale, -3.981);
+      new_rigidbody.set_initial_condition(vec3(this.random_x,24,5), Mat3.identity(), vec3(1,3,-1), vec3(1,1,1));
+      new_rigidbody.set_on_hit_ground_callback(()=>new_rigidbody.p[1]*=-1);
+      this.rigidbodies.push(new_rigidbody);
+      this.rigidbody_generated = true;
+      this.random_x = generate_random_x(this.wall_width);
+    }
 
     // Drawing target for debugging purposes
     const target_transform = Mat4.translation(this.target[0], this.target[1], 0.3).times(Mat4.scale(0.1, 0.1, 0.1));

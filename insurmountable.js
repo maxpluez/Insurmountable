@@ -35,6 +35,11 @@ function generate_random_x(max) {
   return Math.random() * max - max / 2;
 }
 
+function random_in_range(min, max) {
+  return Math.random() * (max - min) + min;
+}
+
+
 export
 const Insurmountable_base = defs.Insurmountable_base =
     class Insurmountable_base extends Component
@@ -259,7 +264,7 @@ export class Insurmountable extends Insurmountable_base
     // wall
     let wall_center_transform = Mat4.translation(0, this.wall_height/2 * 0, -1.2);
     let wall_transform = wall_center_transform.times(Mat4.scale(this.wall_width/2, this.wall_height/2, 0.1));
-    this.shapes.box.draw( caller, this.uniforms, wall_transform, this.materials.wall );
+    //this.shapes.box.draw( caller, this.uniforms, wall_transform, this.materials.wall );
     this.grips.draw( caller, this.uniforms );
     // this.shapes.hermite.sync_draw( caller, this.uniforms, Mat4.identity() );
 
@@ -293,21 +298,49 @@ export class Insurmountable extends Insurmountable_base
     this.robot.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.metal, color: hex_color("#ADD8E6") });
     this.skybox.display(caller, this.uniforms, 1000);
 
-    // Rigit body
+    // Rigid body
+    let torso_pos_global = this.robot.get_torso_pos();
+    torso_pos_global = vec4(torso_pos_global[0],torso_pos_global[1],torso_pos_global[2],1);
     for (const rigidbody of this.rigidbodies) {
+      //add a lifetime to help performance
+      rigidbody.life_time -= dt;
+      if(rigidbody.life_time < 0) {
+        continue;
+      }
+      //convert the torso sphere to rigid body's frame
+      if(rigidbody.enable_collision) {
+        let torso_pos_local = ((Mat4.inverse(rigidbody.get_transform())).times(torso_pos_global)).to3();
+        let intersected = rigidbody.sphere_intersection(torso_pos_local, 0.7);
+        if(intersected) {
+          rigidbody.p = rigidbody.p.times(-1);
+          rigidbody.enable_collision = false;
+          //if collided, disable collision for 1 second to avoid jitter
+          rigidbody.enable_collision_timer = 1;
+        }
+      }
+      else {
+        rigidbody.enable_collision_timer -= dt;
+        if(rigidbody.enable_collision_timer < 0) {
+          rigidbody.enable_collision = true;
+        }
+      }
       rigidbody.update(dt);
       rigidbody.draw(caller, this.uniforms, this.materials.plastic);
     }
+
     // Every 10 seconds a warning shows and a rigid body falls
     if (t % 10 < 3) {
       this.rigidbody_generated = false;
       let warning_transform = Mat4.translation(this.random_x, 20, 0).times(Mat4.scale(1, 1, 0.1));
       this.shapes.box.draw(caller, this.uniforms, warning_transform, this.materials.warning);
-    } else if (!this.rigidbody_generated) {
+    }
+    else if (!this.rigidbody_generated) {
       let new_rigidbody = new Rigidbody();
-      let scale = [1, 2, 1.5];
+      let scale = [random_in_range(1,2), random_in_range(1,2), random_in_range(1,2)];
       new_rigidbody.set_property(new defs.Cube(), 1, Rigidbody.cube_inertia(1, scale), scale, -3.981);
-      new_rigidbody.set_initial_condition(vec3(this.random_x,24,5), Mat3.identity(), vec3(1,3,-1), vec3(1,1,1));
+      new_rigidbody.set_initial_condition(vec3(this.random_x,25,0), Mat3.identity(),
+          vec3(random_in_range(-2,2),random_in_range(-2,2),0),
+          vec3(random_in_range(-2,2),random_in_range(-2,2),random_in_range(-2,2)));
       new_rigidbody.set_on_hit_ground_callback(()=>new_rigidbody.p[1]*=-1);
       this.rigidbodies.push(new_rigidbody);
       this.rigidbody_generated = true;

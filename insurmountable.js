@@ -116,6 +116,7 @@ const Insurmountable_base = defs.Insurmountable_base =
         // Declaring the robot
         this.robot = new Robot();
         this.robot.root.location_matrix = Mat4.translation(-2.5,10,0); // Temp offset
+        this.held_hand = this.robot.reversed ? this.robot.tail : this.robot.root;
 
         // Rigid bodies
         this.skybox = new Skybox();
@@ -240,7 +241,7 @@ export class Insurmountable extends Insurmountable_base
       let x_curr = (1-Math.random()/2) * (x_right - x_left) + x_left;
       let curr_h = this.scene_height + this.wall_height/2;
       // let spline = new spls.Parametric_Spline(1, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
-      let spline = new spls.Hermite_Spline(1, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
+      let spline = new spls.Hermite_Spline(10, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
       let pts = [[-1,0,0],[0,0.5,0],[1,0,0]];
       spline.set_ctrl_points(pts);
       this.grips.add_grip(spline, 0, 1);
@@ -266,18 +267,23 @@ export class Insurmountable extends Insurmountable_base
     // let transform_robot = Mat4.translation(this.shapes.hermite.curr_pos(t_robot)[0], 0, 0);
     // this.robot.root.articulation_matrix = transform_robot;
 
-    this.target = this.target.plus(this.target_rel_vel_base.times(dt * this.speed_rate));
     if (this.grabbed_grip) {
       let root_pos = Mat4.translation(0, -this.grips.height, 0).times(this.grabbed_grip.position().to4(true)).to3();
       this.robot.move_root(root_pos);
-      const held_hand = this.robot.reversed ? this.robot.tail : this.robot.root;
-      this.prev_robot_root_pos = this.curr_robot_root_pos;
-      this.curr_robot_root_pos = held_hand.location_matrix.times(vec4(0,0,0,1)).to3();
       this.target = this.target.plus(this.curr_robot_root_pos.minus(this.prev_robot_root_pos));
     }
+
+    this.target = this.target.plus(this.target_rel_vel_base.times(dt * this.speed_rate));
     this.robot.move_ik(this.target);
 
-    if (this.robot.get_torso_pos()[1] < -4 && this.speed_rate != 0) {
+    this.prev_robot_root_pos = this.curr_robot_root_pos;
+    this.curr_robot_root_pos = this.held_hand.location_matrix.times(vec4(0,0,0,1)).to3();
+    const end_effector_pos = this.robot.get_end_effector();
+    const target_dist = this.target.minus(this.curr_robot_root_pos).norm();
+    const end_dist = end_effector_pos.minus(this.curr_robot_root_pos).norm();
+    this.target = this.curr_robot_root_pos.mix(this.target, end_dist / target_dist);
+
+    if (this.robot.get_torso_pos()[1] < -4 && this.speed_rate !== 0) {
       this.lost = true;
       this.final_time = t;
       this.curr_speed_rate = 0;
@@ -360,13 +366,13 @@ export class Insurmountable extends Insurmountable_base
 
     // Lastly, change target to the other hand
     this.target = this.robot.get_end_effector();
-    const held_hand = this.robot.reversed ? this.robot.tail : this.robot.root;
-    this.prev_robot_root_pos = this.curr_robot_root_pos = held_hand.location_matrix.times(vec4(0,0,0,1)).to3();
+    this.held_hand = this.robot.reversed ? this.robot.tail : this.robot.root;
+    this.prev_robot_root_pos = this.curr_robot_root_pos = this.held_hand.location_matrix.times(vec4(0,0,0,1)).to3();
 
     this.is_first_grip = false;
 
     this.score += 1;
-    if (this.score != 0 && this.score % 5 == 0) {
+    if (this.score !== 0 && this.score % 5 === 0) {
       this.curr_speed_rate += 0.5;
     }
   }

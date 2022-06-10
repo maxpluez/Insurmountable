@@ -8,7 +8,7 @@ const spls = {};
 
 export {spls};
 
-const material_white = { shader: new defs.Phong_Shader(), ambient: .2, diffusivity: 1, specularity: .5, color: color(1,1,1,1) };
+const material_white = { shader: new defs.Phong_Shader(), ambient: 1, color: color(1,1,1,1) };
 
 /*
 
@@ -107,7 +107,7 @@ const Parametric_Spline = spls.Parametric_Spline =
 
         sync_draw( caller, uniforms, transform_matrix ) {
             this.sync_card( caller.context );
-            this.draw( caller, uniforms, transform_matrix, {...material_white}, "LINE_STRIP" );
+            this.draw( caller, uniforms, transform_matrix.times(this.transform_matrix), {...material_white}, "LINE_STRIP" );
         }
     }
 

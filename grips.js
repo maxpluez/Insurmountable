@@ -85,7 +85,6 @@ const Grips = grips.Grips = class Grips extends Array {
                                             .times(Mat4.scale(0.3, 0.3, 0.3))
                 , {...material_grip, color: grip.color});
             grip.spline.sync_draw( caller, uniforms, Mat4.translation(0, -this.height, 0) );
-            console.log(grip.spline);
         }
     }
 }

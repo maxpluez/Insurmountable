@@ -240,10 +240,19 @@ export class Insurmountable extends Insurmountable_base
       let x_right = Math.min(x_prev + this.grip_x_deviation, this.robot_range_width/2);
       let x_curr = (1-Math.random()/2) * (x_right - x_left) + x_left;
       let curr_h = this.scene_height + this.wall_height/2;
-      // let spline = new spls.Parametric_Spline(1, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
-      let spline = new spls.Hermite_Spline(10, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
-      let pts = [[-1,0,0],[0,0.5,0],[1,0,0]];
-      spline.set_ctrl_points(pts);
+      // generate random control points around a certain range
+      let n_ctrl_pts = Math.max(3, Math.floor(Math.random() * 10));
+      let ctrl_pts = [];
+      for (let i = 0; i < n_ctrl_pts; i++) {
+        ctrl_pts.push([
+            (x_left - x_right)/2 / n_ctrl_pts * i,
+            generate_random_x(2),
+            0
+        ]);
+      }
+
+      let spline = new spls.Hermite_Spline(5 * n_ctrl_pts, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
+      spline.set_ctrl_points(ctrl_pts);
       this.grips.add_grip(spline, 0, 1);
     }
 
@@ -257,7 +266,7 @@ export class Insurmountable extends Insurmountable_base
     }
 
     // wall
-    let wall_center_transform = Mat4.translation(0, this.wall_height/2 * 0, -1.2);
+    let wall_center_transform = Mat4.translation(0, 0, -1.2);
     let wall_transform = wall_center_transform.times(Mat4.scale(this.wall_width/2, this.wall_height/2, 0.1));
     this.shapes.box.draw( caller, this.uniforms, wall_transform, this.materials.wall );
     this.grips.draw( caller, this.uniforms );
@@ -276,6 +285,7 @@ export class Insurmountable extends Insurmountable_base
     this.target = this.target.plus(this.target_rel_vel_base.times(dt * this.speed_rate));
     this.robot.move_ik(this.target);
 
+    // if target moves too far for the end effector to reach, bring it back to the maximum
     this.prev_robot_root_pos = this.curr_robot_root_pos;
     this.curr_robot_root_pos = this.held_hand.location_matrix.times(vec4(0,0,0,1)).to3();
     const end_effector_pos = this.robot.get_end_effector();

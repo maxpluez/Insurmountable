@@ -286,7 +286,7 @@ export const Robot = class Robot {
 
         let count = 0;
 
-        while (delta > 0.0001 && count < 1000) {
+        while (delta > 0.001 && count < 250) {
             if (anchor_joint.allow_rotation) {
                 anchor = anchor_joint.get_loc_vec(this.reversed);
                 anchor_joint.dof += calc_angle(end_effector, anchor, target);

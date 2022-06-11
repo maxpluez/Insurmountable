@@ -443,10 +443,10 @@ export class Insurmountable extends Insurmountable_base
     // this.new_line();
 
     // WASD
-    this.key_triggered_button( "Up", [ "w" ], () => { this.target_rel_vel_base[1] = target_rel_speed_base * this.speed_rate }, button_color, () => { this.target_rel_vel_base[1] = 0 } );
-    this.key_triggered_button( "Left", [ "a" ], () => { this.target_rel_vel_base[0] = -target_rel_speed_base * this.speed_rate }, button_color, () => { this.target_rel_vel_base[0] = 0 } );
-    this.key_triggered_button( "Down", [ "s" ], () => { this.target_rel_vel_base[1] = -target_rel_speed_base * this.speed_rate }, button_color, () => { this.target_rel_vel_base[1] = 0 } );
-    this.key_triggered_button( "Right", [ "d" ], () => { this.target_rel_vel_base[0] = target_rel_speed_base * this.speed_rate }, button_color, () => { this.target_rel_vel_base[0] = 0 } );
+    this.key_triggered_button( "Up", [ "w" ], () => { this.target_rel_vel_base[1] = target_rel_speed_base}, button_color, () => { this.target_rel_vel_base[1] = 0 } );
+    this.key_triggered_button( "Left", [ "a" ], () => { this.target_rel_vel_base[0] = -target_rel_speed_base}, button_color, () => { this.target_rel_vel_base[0] = 0 } );
+    this.key_triggered_button( "Down", [ "s" ], () => { this.target_rel_vel_base[1] = -target_rel_speed_base}, button_color, () => { this.target_rel_vel_base[1] = 0 } );
+    this.key_triggered_button( "Right", [ "d" ], () => { this.target_rel_vel_base[0] = target_rel_speed_base}, button_color, () => { this.target_rel_vel_base[0] = 0 } );
     // Other buttons
     this.new_line();
     this.key_triggered_button( "Grab!", [ " " ], this.try_to_grab);

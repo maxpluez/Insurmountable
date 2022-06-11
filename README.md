@@ -16,11 +16,11 @@ There are two ways to run the project:
 
 ## Theme and Scene Design
 
-- We implemented a rock climbing game with a robot-like character. The user can control one hand at a time, and move it to grab one of the pre-defined holds on the wall. The wall will constantly be scrolling downwards, and the player must try to advance upwards to not lose. The player gains a point when they grabs onto a new grip, and loses a point when they let a grip go out of bounds. In addition to the scores, the player must also watch out for the falling rocks from the sky: the robot will have an initial HP of 3, and being hit will decrease the HP by 1 (the player can gain 1 HP back every 5 grips). The game will progressively become faster and faster (speed will increase by 20% every 5 grips) as the player gains more points. 
+- We implemented a rock climbing game with a robot-like character. The user can control one hand at a time, and move it to grab one of the pre-defined holds on the wall. The wall will constantly be scrolling downwards, and the player must try to advance upwards to not lose. The player gains a point when they grabs onto a new grip, and loses a point when they let a grip go out of bounds. In addition to the scores, the player must also watch out for the falling rocks from the sky: the robot will have an initial HP of 3, and being hit will decrease the HP by 1 (the player can gain 1 HP back every 5 grips). The game will progressively become faster and faster (speed will increase by 20% every 5 grips) as the player gains more points, and will be reset to 1 after a hit by the falling rocks.
 
 - The scene is polished by adding texture to the models. A skybox is implemented by stitching six large squares, where the texture on each square is designed to create an illustration of a continuous sky. We also added textures to the wall and the falling rocks that made the scene look more coherent and pleasant. 
 
-//TODO: PUT SCREENSHOT HERE (LONGLONG)
+![](screenshot.png)
 
 ## Computer animation algorithms and techniques
  
@@ -60,4 +60,4 @@ We implement collision between the rigid body with the character's torso, which 
 - Some textures were added to make the game more visually appealing. 
 
 ## Video demo
-//TODO: PUT VIDEO HERE, OR LIST FILE NAME (LONGLONG)
+https://drive.google.com/file/d/1u-U5WKmnobO0uh64AT8bVPI8CNV8jwr_/view?usp=sharing

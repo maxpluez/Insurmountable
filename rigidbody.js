@@ -132,9 +132,9 @@ class Rigidbody
         this.p = this.p.plus(ds[2].times(dt));
         this.r = this.r.plus(ds[3].times(dt));
 
-        if(this.x[1] < 0 && this.hit_ground_callback)
-        {
-            this.hit_ground_callback();
-        }
+        // if(this.x[1] < 0 && this.hit_ground_callback)
+        // {
+        //     this.hit_ground_callback();
+        // }
     }
 }

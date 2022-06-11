@@ -89,6 +89,12 @@ const Insurmountable_base = defs.Insurmountable_base =
             color: hex_color("#000000"),
             ambient: 1, diffusivity: 0.3, specularity: 0.1,
             texture: new Texture("assets/warning.png")
+          },
+          rock: {
+            shader: tex_phong,
+            color: color(0,0,0,1),
+            ambient: 1,
+            texture: new Texture("assets/stars.png")
           }
         }
 
@@ -237,33 +243,27 @@ export class Insurmountable extends Insurmountable_base
     let n_grips_after = Math.floor(this.scene_height / this.grip_dh);
 
     // update grips
-    this.score -= this.grips.update(dt * this.speed_rate * this.scene_speed_base, dt * this.speed_rate);
+    this.score -= this.grips.update(this.shapes.hermite, dt * this.speed_rate * this.scene_speed_base, dt * this.speed_rate);
 
     // generate new grips if necessary
     if (n_grips_after > n_grips_before) {
-      let x_prev = (this.grips.length > 0) ? this.grips[this.grips.length-1].position()[0] : 0;
+      let x_prev = (this.grips.length > 0) ? this.grips[this.grips.length-1].position(this.shapes.hermite)[0] : 0;
       let x_left = Math.max(x_prev - this.grip_x_deviation, -this.robot_range_width/2);
       let x_right = Math.min(x_prev + this.grip_x_deviation, this.robot_range_width/2);
       let x_curr = (1-Math.random()/2) * (x_right - x_left) + x_left;
       let curr_h = this.scene_height + this.wall_height/2;
       // generate random control points around a certain range
       let n_ctrl_pts = Math.max(3, Math.floor(Math.random() * 10));
-      let ctrl_pts = [];
+      let catmull_pts = [];
       for (let i = 0; i < n_ctrl_pts; i++) {
-        ctrl_pts.push([
+        catmull_pts.push([
             (x_left - x_right)/2 / n_ctrl_pts * i,
             generate_random_x(2),
             0
         ]);
       }
-
-      let spline = new spls.Hermite_Spline(5 * n_ctrl_pts, color(1,1,1,1), Mat4.translation(x_curr, curr_h, 0));
-      spline.set_ctrl_points(ctrl_pts);
-      this.grips.add_grip(spline, 0, 1);
+      this.grips.add_grip(catmull_pts, Mat4.translation(x_curr, curr_h, 0), 0, 1);
     }
-
-    // update Hermite Spline
-    this.shapes.hermite.set_ctrl_points(this.grips.position_list());
 
     // Draw ground
     if (this.scene_height < 40) { // TODO: change the hardcoded 40 to some calculated value for generality
@@ -274,16 +274,11 @@ export class Insurmountable extends Insurmountable_base
     // wall
     let wall_center_transform = Mat4.translation(0, 0, -1.2);
     let wall_transform = wall_center_transform.times(Mat4.scale(this.wall_width/2, this.wall_height/2, 0.1));
-    //this.shapes.box.draw( caller, this.uniforms, wall_transform, this.materials.wall );
-    this.grips.draw( caller, this.uniforms );
-    // this.shapes.hermite.sync_draw( caller, this.uniforms, Mat4.identity() );
-
-    // let t_robot = binary_solve_mono((t) => (this.shapes.hermite.curr_pos(t)[1] - 5), 0, 1, 0.01);
-    // let transform_robot = Mat4.translation(this.shapes.hermite.curr_pos(t_robot)[0], 0, 0);
-    // this.robot.root.articulation_matrix = transform_robot;
+    this.shapes.box.draw( caller, this.uniforms, wall_transform, this.materials.wall );
+    this.grips.draw( this.shapes.hermite, caller, this.uniforms );
 
     if (this.grabbed_grip) {
-      let root_pos = Mat4.translation(0, -this.grips.height, 0).times(this.grabbed_grip.position().to4(true)).to3();
+      let root_pos = Mat4.translation(0, -this.grips.height, 0).times(this.grabbed_grip.position(this.shapes.hermite).to4(true)).to3();
       this.robot.move_root(root_pos);
       this.target = this.target.plus(this.curr_robot_root_pos.minus(this.prev_robot_root_pos));
     }
@@ -308,14 +303,13 @@ export class Insurmountable extends Insurmountable_base
     // Drawing the robot
     this.robot.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.metal, color: hex_color("#ADD8E6") });
     this.skybox.display(caller, this.uniforms, 1000);
-    
-    if (this.speed_rate !== 0) {
+
     // Rigid body
     let torso_pos_global = this.robot.get_torso_pos();
     torso_pos_global = vec4(torso_pos_global[0],torso_pos_global[1],torso_pos_global[2],1);
     for (const rigidbody of this.rigidbodies) {
       //add a lifetime to help performance
-      rigidbody.life_time -= dt;
+      rigidbody.life_time -= dt * this.speed_rate;
       if(rigidbody.life_time < 0) {
         continue;
       }
@@ -334,34 +328,41 @@ export class Insurmountable extends Insurmountable_base
         }
       }
       else {
-        rigidbody.enable_collision_timer -= dt;
+        rigidbody.enable_collision_timer -= dt * this.speed_rate;
         if(rigidbody.enable_collision_timer < 0) {
           rigidbody.enable_collision = true;
         }
       }
-      rigidbody.update(dt);
-      rigidbody.draw(caller, this.uniforms, this.materials.plastic);
+      rigidbody.update(dt * this.speed_rate);
+      rigidbody.draw(caller, this.uniforms, this.materials.rock);
     }
 
-    // Every 10 seconds a warning shows and a rigid body falls
-    if (t % 10 < 3) {
-      this.rigidbody_generated = false;
-      let warning_transform = Mat4.translation(this.random_x, 20, 0).times(Mat4.scale(1, 1, 0.1));
-      this.shapes.box.draw(caller, this.uniforms, warning_transform, this.materials.warning);
+    // delete rigidbody that is below camera
+    for (let i = this.rigidbodies.length-1; i >= 0; i--) {
+      if (this.rigidbodies[i].x[1] < -10) {
+        this.rigidbodies.splice(i, 1);
+      }
     }
-    else if (!this.rigidbody_generated) {
-      let new_rigidbody = new Rigidbody();
-      let scale = [random_in_range(1,2), random_in_range(1,2), random_in_range(1,2)];
-      new_rigidbody.set_property(new defs.Cube(), 1, Rigidbody.cube_inertia(1, scale), scale, -3.981);
-      new_rigidbody.set_initial_condition(vec3(this.random_x,25,0), Mat3.identity(),
-          vec3(random_in_range(-2,2),random_in_range(-2,2),0),
-          vec3(random_in_range(-2,2),random_in_range(-2,2),random_in_range(-2,2)));
-      new_rigidbody.set_on_hit_ground_callback(()=>new_rigidbody.p[1]*=-1);
-      this.rigidbodies.push(new_rigidbody);
-      this.rigidbody_generated = true;
-      this.random_x = generate_random_x(this.wall_width);
-    }
-    }
+
+      // Every 10 seconds a warning shows and a rigid body falls
+      if (t % 10 < 3) {
+        this.rigidbody_generated = false;
+        let warning_transform = Mat4.translation(this.random_x, 20, 0).times(Mat4.scale(1, 1, 0.1));
+        this.shapes.box.draw(caller, this.uniforms, warning_transform, this.materials.warning);
+      }
+      else if (!this.rigidbody_generated) {
+        let new_rigidbody = new Rigidbody();
+        let scale = [random_in_range(1,2), random_in_range(1,2), random_in_range(1,2)];
+        new_rigidbody.set_property(new defs.Cube(), 1, Rigidbody.cube_inertia(1, scale), scale, -3.981);
+        new_rigidbody.set_initial_condition(vec3(this.random_x,25,0), Mat3.identity(),
+            vec3(random_in_range(-2,2),random_in_range(-2,2)-this.scene_speed_base*this.speed_rate /* so that the speed is 0 wrt conceptual ground */,0),
+            vec3(random_in_range(-2,2),random_in_range(-2,2),random_in_range(-2,2)));
+        new_rigidbody.set_on_hit_ground_callback(()=>new_rigidbody.p[1]*=-1);
+        this.rigidbodies.push(new_rigidbody);
+        this.rigidbody_generated = true;
+        this.random_x = generate_random_x(this.wall_width);
+      }
+
 
     // Drawing target for debugging purposes
     const target_transform = Mat4.translation(this.target[0], this.target[1], 0.3).times(Mat4.scale(0.1, 0.1, 0.1));
@@ -396,7 +397,7 @@ export class Insurmountable extends Insurmountable_base
   }
 
   try_to_grab() {
-    const { grip, position, min_dist } = this.grips.find_closest(this.robot.get_end_effector());
+    const { grip, position, min_dist } = this.grips.find_closest(this.shapes.hermite, this.robot.get_end_effector());
 
     if (min_dist > 1 || !grip.grabable) {
       return;

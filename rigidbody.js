@@ -2,13 +2,17 @@ import {defs, tiny} from './examples/common.js';
 
 const {Vector, Vector3, vec, Matrix, vec3, vec4, color, hex_color, Mat4, Mat3, Shape, Material, Shader, Texture, Component } = tiny;
 
+function clamp(number, min, max) {
+    return Math.max(min, Math.min(number, max));
+}
+
 export
 class Rigidbody
 {
     constructor() {
         this.shape = new defs.Cube();
         this.scale = Mat4.identity();
-
+        this.scale_array = [0,0,0];
         this.g = vec3(0, -9.81, 0);
 
         this.m = 1;
@@ -18,10 +22,28 @@ class Rigidbody
         this.x = vec3(0,0,0); //position
         this.R = Mat3.identity(); //rotation
         this.p = vec3(0,0,0); //linear momentum
-        this.r = vec3(0,0,0); //angular momentun
+        this.r = vec3(0,0,0); //angular momentum
 
         this.f = vec3(0,0,0); //external force (applied on center of mass)
         this.tau = vec3(0,0,0); //external torque (pivot on center of mass)
+        this.enable_collision = true;
+        this.enable_collision_timer = 0;
+        this.life_time = 15;
+    }
+
+    closed_point_on_AABB(p) {
+        let result = vec(0,0,0);
+        for(let i = 0; i < 3; i++) {
+            result[i] = clamp(p[i], -this.scale_array[i],this.scale_array[i]);
+        }
+        return result;
+    }
+
+    sphere_intersection(S, R) {
+       let proj = this.closed_point_on_AABB(S);
+       let temp1 = vec4(proj[0], proj[1], proj[2], 1);
+       let temp2 = vec4(S[0], S[1], S[2], 1);
+       return (temp1).minus(temp2).norm() <= R;
     }
 
     static cube_inertia(m, scale) {
@@ -47,6 +69,12 @@ class Rigidbody
         return (T.times(R)).times(S);
     }
 
+    get_transform_no_scale() {
+        let T = Mat4.translation(this.x[0], this.x[1], this.x[2]);
+        let R = Mat3.rot_to_mat4(this.R);
+        return T.times(R);
+    }
+
     draw(caller, uniforms, material) {
         this.shape.draw( caller, uniforms, this.get_transform(), material);
     }
@@ -60,6 +88,7 @@ class Rigidbody
             [0, 1/I_body[1][1], 0],
             [0, 0, 1/I_body[2][2]]
         )
+        this.scale_array = scale;
         this.scale = Mat4.scale(scale[0], scale[1], scale[2]);
         this.g = vec3(0,g,0);
     }
@@ -109,7 +138,3 @@ class Rigidbody
         }
     }
 }
-
-
-
-

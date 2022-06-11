@@ -145,6 +145,7 @@ const Insurmountable_base = defs.Insurmountable_base =
 
         // game variables
         this.score = 0;
+        this.hp = 3;
         this.message = "Insurmountable!";
         this.lost = false;
         this.pause = false;
@@ -298,7 +299,7 @@ export class Insurmountable extends Insurmountable_base
     const end_dist = end_effector_pos.minus(this.curr_robot_root_pos).norm();
     this.target = this.curr_robot_root_pos.mix(this.target, end_dist / target_dist);
 
-    if (this.robot.get_torso_pos()[1] < -4 && this.speed_rate !== 0) {
+    if ((this.robot.get_torso_pos()[1] < -4 || this.hp <= 0) && this.speed_rate !== 0) {
       this.lost = true;
       this.final_time = t;
       this.curr_speed_rate = 0;
@@ -307,7 +308,8 @@ export class Insurmountable extends Insurmountable_base
     // Drawing the robot
     this.robot.draw( caller, this.uniforms, Mat4.identity(), { ...this.materials.metal, color: hex_color("#ADD8E6") });
     this.skybox.display(caller, this.uniforms, 1000);
-
+    
+    if (this.speed_rate !== 0) {
     // Rigid body
     let torso_pos_global = this.robot.get_torso_pos();
     torso_pos_global = vec4(torso_pos_global[0],torso_pos_global[1],torso_pos_global[2],1);
@@ -322,6 +324,9 @@ export class Insurmountable extends Insurmountable_base
         let torso_pos_local = ((Mat4.inverse(rigidbody.get_transform_no_scale())).times(torso_pos_global)).to3();
         let intersected = rigidbody.sphere_intersection(torso_pos_local, 1.1);
         if(intersected) {
+          if (!this.is_first_grip) {
+            this.hp--;
+          }
           rigidbody.p = rigidbody.p.times(-1);
           rigidbody.enable_collision = false;
           //if collided, disable collision for 1 second to avoid jitter
@@ -356,6 +361,7 @@ export class Insurmountable extends Insurmountable_base
       this.rigidbody_generated = true;
       this.random_x = generate_random_x(this.wall_width);
     }
+    }
 
     // Drawing target for debugging purposes
     const target_transform = Mat4.translation(this.target[0], this.target[1], 0.3).times(Mat4.scale(0.1, 0.1, 0.1));
@@ -375,7 +381,7 @@ export class Insurmountable extends Insurmountable_base
     } else if (this.lost) {
       this.message = "You lost!\n\n\n"+`Final score: ${this.score}\n\n\n`+`Time survived: ${Math.round(this.final_time-this.first_grip_time)}s`;
     } else {
-      this.message = "Insurmountable!\n\n\n"+`Current score: ${this.score}\n\n\n`+`Current speed: ${this.curr_speed_rate}x`;
+      this.message = "Insurmountable!\n\n\n"+`Current score: ${this.score}\n\n\n`+`Current HP: ${this.hp}`;
     }
 
     let multi_line_string = this.message.split('\n');
@@ -415,8 +421,9 @@ export class Insurmountable extends Insurmountable_base
     this.is_first_grip = false;
 
     this.score += 1;
-    if (this.score !== 0 && this.score % 5 === 0) {
+    if (this.score > 0 && this.score % 5 === 0) {
       this.curr_speed_rate += 0.5;
+      this.hp++;
     }
   }
 

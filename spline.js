@@ -171,7 +171,7 @@ const Hermite_Spline = spls.Hermite_Spline =
             }
         }
 
-        set_ctrl_points(pts) {
+        catmull_ctrl_points(pts) {
             // set points according to Catmull-Rom rule
             this.ctrl_pts = [];
             this.ctrl_tgs = [];

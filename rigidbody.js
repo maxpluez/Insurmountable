@@ -41,7 +41,9 @@ class Rigidbody
 
     sphere_intersection(S, R) {
        let proj = this.closed_point_on_AABB(S);
-       return (proj.minus(S)).norm() <= R;
+       let temp1 = vec4(proj[0], proj[1], proj[2], 1);
+       let temp2 = vec4(S[0], S[1], S[2], 1);
+       return (temp1).minus(temp2).norm() <= R;
     }
 
     static cube_inertia(m, scale) {
@@ -65,6 +67,12 @@ class Rigidbody
         let R = Mat3.rot_to_mat4(this.R);
         let S = this.scale;
         return (T.times(R)).times(S);
+    }
+
+    get_transform_no_scale() {
+        let T = Mat4.translation(this.x[0], this.x[1], this.x[2]);
+        let R = Mat3.rot_to_mat4(this.R);
+        return T.times(R);
     }
 
     draw(caller, uniforms, material) {
@@ -130,7 +138,3 @@ class Rigidbody
         }
     }
 }
-
-
-
-

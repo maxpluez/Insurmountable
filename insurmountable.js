@@ -319,8 +319,8 @@ export class Insurmountable extends Insurmountable_base
       }
       //convert the torso sphere to rigid body's frame
       if(rigidbody.enable_collision) {
-        let torso_pos_local = ((Mat4.inverse(rigidbody.get_transform())).times(torso_pos_global)).to3();
-        let intersected = rigidbody.sphere_intersection(torso_pos_local, 0.7);
+        let torso_pos_local = ((Mat4.inverse(rigidbody.get_transform_no_scale())).times(torso_pos_global)).to3();
+        let intersected = rigidbody.sphere_intersection(torso_pos_local, 1.1);
         if(intersected) {
           rigidbody.p = rigidbody.p.times(-1);
           rigidbody.enable_collision = false;

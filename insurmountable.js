@@ -107,7 +107,7 @@ const Insurmountable_base = defs.Insurmountable_base =
         this.wall_width = 17;
         this.wall_height = 60;
 
-        this.grip_dh = 3; // height difference between two consecutive grips
+        this.grip_dh = 6; // height difference between two consecutive grips
         this.grips = new grips.Grips();
         this.grip_x_deviation = 8;
         // initialize grips
@@ -317,7 +317,7 @@ export class Insurmountable extends Insurmountable_base
       if(rigidbody.enable_collision) {
         let torso_pos_local = ((Mat4.inverse(rigidbody.get_transform_no_scale())).times(torso_pos_global)).to3();
         let intersected = rigidbody.sphere_intersection(torso_pos_local, 1.1);
-        if(intersected) {
+        if (intersected) {
           if (!this.is_first_grip) {
             this.hp--;
           }
@@ -325,6 +325,8 @@ export class Insurmountable extends Insurmountable_base
           rigidbody.enable_collision = false;
           //if collided, disable collision for 1 second to avoid jitter
           rigidbody.enable_collision_timer = 1;
+
+          this.curr_speed_rate = 1; // reset speed rate upon a hit
         }
       }
       else {
@@ -441,10 +443,10 @@ export class Insurmountable extends Insurmountable_base
     // this.new_line();
 
     // WASD
-    this.key_triggered_button( "Up", [ "w" ], () => { this.target_rel_vel_base[1] = target_rel_speed_base }, button_color, () => { this.target_rel_vel_base[1] = 0 } );
-    this.key_triggered_button( "Left", [ "a" ], () => { this.target_rel_vel_base[0] = -target_rel_speed_base }, button_color, () => { this.target_rel_vel_base[0] = 0 } );
-    this.key_triggered_button( "Down", [ "s" ], () => { this.target_rel_vel_base[1] = -target_rel_speed_base }, button_color, () => { this.target_rel_vel_base[1] = 0 } );
-    this.key_triggered_button( "Right", [ "d" ], () => { this.target_rel_vel_base[0] = target_rel_speed_base }, button_color, () => { this.target_rel_vel_base[0] = 0 } );
+    this.key_triggered_button( "Up", [ "w" ], () => { this.target_rel_vel_base[1] = target_rel_speed_base * this.speed_rate }, button_color, () => { this.target_rel_vel_base[1] = 0 } );
+    this.key_triggered_button( "Left", [ "a" ], () => { this.target_rel_vel_base[0] = -target_rel_speed_base * this.speed_rate }, button_color, () => { this.target_rel_vel_base[0] = 0 } );
+    this.key_triggered_button( "Down", [ "s" ], () => { this.target_rel_vel_base[1] = -target_rel_speed_base * this.speed_rate }, button_color, () => { this.target_rel_vel_base[1] = 0 } );
+    this.key_triggered_button( "Right", [ "d" ], () => { this.target_rel_vel_base[0] = target_rel_speed_base * this.speed_rate }, button_color, () => { this.target_rel_vel_base[0] = 0 } );
     // Other buttons
     this.new_line();
     this.key_triggered_button( "Grab!", [ " " ], this.try_to_grab);
